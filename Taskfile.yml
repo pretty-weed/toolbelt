@@ -1,0 +1,17 @@
+version: "3"
+tasks:
+  scribus-install:
+    interactive: true
+    cmds:
+      - sudo find /usr/share/scribus/scripts/dandi* -name __pycache__ -exec rm -rf {} \; || true
+      - sudo rm -rf /usr/share/scribus/scripts/__pycache__
+      - sudo /usr/bin/python3 -m pip install '.[debug]' --upgrade --target '/usr/share/scribus/scripts/'
+      - sudo rm -rf ./build
+    
+  clean-scribus-pycache:
+    interactive: true
+    cmds: 
+      - | 
+        for fname in $(find /usr/share/scribus/scripts/ -name __pycache__); do
+        test -e $fname && sudo rm -rf $fname
+        done

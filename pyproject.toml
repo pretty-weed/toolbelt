@@ -1,0 +1,38 @@
+[project]
+name = "danditools"
+dynamic = ["version", "readme"]
+description = "my personal toolbelt"
+requires-python = "~=3.13"
+license = {file="LICENSE.md"}
+authors = [{name="Dandelion Good", email = "dandeliongood@proton.me"}]
+
+dependencies = [
+    "beautifulsoup4~=4.13",
+    "gdown~=5.2",
+    "requests~=2.32",
+    "pyyaml"
+]
+
+[project.optional-dependencies]
+test = ["tox"]
+pytest = [
+    "pytest-cov",
+    "pytest",
+    "pytest-xdist"
+]
+profile = ["snakeviz~=2.2"]
+lint = ["black"]
+debug = ["debugpy"]
+
+[project.scripts]
+scraper = "danditools.scraper:main"
+
+[tool.setuptools.dynamic]
+readme = {file = ["README.md"], content-type = "text/markdown"}
+
+[tool.black]
+line-length = 80
+
+[build-system]
+requires = ["setuptools", "setuptools-scm", "wheel"]
+build-backend = "setuptools.build_meta"

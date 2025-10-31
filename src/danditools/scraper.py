@@ -11,7 +11,6 @@ from requests.exceptions import HTTPError
 from bs4 import BeautifulSoup
 
 # Target web page URL (modify as needed)
-BASE_URL = "https://example.com/data"
 DRIVE_URL_RE = re.compile("^(?:https?://)?drive.google.com")
 DRIVE_URL_SUB_RE = re.compile(r"https?://drive\.google\.com/file/d/([0-9a-zA-Z_\-]+)/view(?:\?.*)")
 

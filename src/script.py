@@ -12,7 +12,9 @@ import dandiscribe.enums
 importlib.reload(dandiscribe.enums)
 import dandiscribe.calendar
 importlib.reload(dandiscribe.calendar)
+import dandiscribe.calendar.main
+importlib.reload(dandiscribe.calendar.main)
 
-dandiscribe.calendar.main(routines_file=
+dandiscribe.calendar.main.entry_point(routines_file=
 	"/home/dandelion/src/toolbelt/src/dandiscribe/routines.yml", 
 	debug=False)

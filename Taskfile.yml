@@ -1,11 +1,19 @@
 version: "3"
+vars:
+  DEFAULT_BIN_DIR:
+    sh: |
+      bin_path=""
+      for test_path in $(echo $PATH | tr ":" "\n"); do
+      [[ "${test_path}" == $HOME/*bin ]] && bin_path="${test_path}" 
+      done
+      test -n "${bin_path}" && echo "${bin_path}"
 tasks:
   scribus-install:
     interactive: true
     cmds:
       - sudo find /usr/share/scribus/scripts/dandi* -name __pycache__ -exec rm -rf {} \; || true
       - sudo rm -rf /usr/share/scribus/scripts/__pycache__
-      - sudo /usr/bin/python3 -m pip install '.[debug]' --upgrade --target '/usr/share/scribus/scripts/'
+      - sudo /usr/bin/python3 -m pip install '.' --upgrade --target '/usr/share/scribus/scripts/'
       - sudo rm -rf ./build
     
   clean-scribus-pycache:
@@ -14,4 +22,16 @@ tasks:
       - | 
         for fname in $(find /usr/share/scribus/scripts/ -name __pycache__); do
         test -e $fname && sudo rm -rf $fname
+        done
+
+  install-shell-scripts:
+    aliases:
+      - install-scripts
+    vars:
+      INSTALL_DIR: '{{ .INSTALL_DIR | default .DEFAULT_BIN_DIR }}'
+    cmds:
+      - echo {{ .DEFAULT_BIN_DIR }}
+      - |
+        for fname in shelltools/*; do
+        test ! -e {{ .INSTALL_DIR }}/$fname && ln -s $(realpath "shelltools/${fname}") "{{.INSTALL_DIR}}/${fname}"
         done

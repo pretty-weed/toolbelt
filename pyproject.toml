@@ -9,23 +9,30 @@ authors = [{name="Dandelion Good", email = "dandeliongood@proton.me"}]
 dependencies = [
     "beautifulsoup4~=4.13",
     "gdown~=5.2",
+    "icalendar~=6.3",
     "requests~=2.32",
-    "pyyaml"
+    "pyyaml~=6.0",
+    "platformdirs~=4.3",
+    "pypdf~=6.1",
+    "dandy_lib@git+http://github.com/pretty-weed/py_libs@v0.1.5",
 ]
 
+[tool.setuptools.package-data]
+dandiscribe = ["routines.yml", "fonts/OFL.txt", "fonts/*/*.ttf", "fonts/*/*.otf"]
+
 [project.optional-dependencies]
-test = ["tox"]
-pytest = [
-    "pytest-cov",
-    "pytest",
-    "pytest-xdist"
-]
+
 profile = ["snakeviz~=2.2"]
-lint = ["black"]
+lint = ["black~=25.1"]
 debug = ["debugpy"]
+test = ["pytest"]
 
 [project.scripts]
 scraper = "danditools.scraper:main"
+xrandr-parse = "danditools.xrandr_parse:main"
+blog-combine = "danditools.blog_combine:main"
+cleanup-transcript = "danditools.cleanup_transcript:main"
+pdf-split = "danditools.pdf:split"
 
 [tool.setuptools.dynamic]
 readme = {file = ["README.md"], content-type = "text/markdown"}

@@ -1,8 +1,15 @@
 from contextlib import contextmanager
+from functools import partial
 from os import getenv
+from pathlib import Path
+from platformdirs import user_cache_dir
+
+import yaml
 
 import debugpy
 import scribus
+
+MISSING = object()
 
 class PauseDrawing:
     _level = 0
@@ -69,8 +76,61 @@ class Debug:
         debugpy.set_trace()
         yield
 
-        
+get_cache_dir = partial(user_cache_dir, "dandiscribe", "DandelionGood")
+CACHE_FILE = Path(get_cache_dir()).joinpath("cache.yml")
 
+
+def get_cache_res():
+    if not CACHE_FILE.is_file():
+        return MISSING
+    return yaml.safe_load(CACHE_FILE.read_text())
+
+def get_cache_val(key:str, cache_res=None):
+    if cache_res is None:
+        cache_res = get_cache_res()
+    if cache_res is MISSING or not cache_res:
+        return MISSING
+
+    return cache_res.get(key, MISSING)
+
+def cache_val(key:str, value, overwrite: bool = False):
+    cache_res = get_cache_res()
+    if cache_res is MISSING:
+        cache_res = {}
+    if (not overwrite) and get_cache_val(key, cache_res) is not MISSING:
+        raise TypeError("Cannot overwrite cache without overwrite set True")
+    cache_res[key] = value
+    if not CACHE_FILE.parent.exists():
+        CACHE_FILE.parent.mkdir()
+    with CACHE_FILE.open("w") as file_handle:
+        yaml.safe_dump(cache_res, file_handle)
+
+
+def clear_cache_val(key: str):
+    cache_res = get_cache_res
+    if cache_res is MISSING:
+        return
+    if key in cache_res:
+        del(cache_res[key])
+    else:
+        return
+    with CACHE_FILE.open('r') as file_handle:
+        yaml.safe_dump(cache_res, file_handle)
+    
+
+def get_justify_adjustments(count: int, remainder:int) -> list[int]:
+    justify_adjustments = [0] * count
+    if not count:
+        raise ValueError("Division by zero")
+    while remainder:
+        if remainder >= count:
+            justify_adjustments = [adj + remainder // rows for adj in justify_adjustments]
+            remainder = remainder % rows
+        else:
+            justify_adjustments[:remainder] = [rem + 1 for rem in justify_adjustments[:remainder]]
+            remainder = 0
+    return justify_adjustments
+    
 
 class NotInDebugger(Exception):
     pass
@@ -109,9 +169,11 @@ class _OkToIgnoreDialog:
     def __call__(self, title: str, message: str) -> str | object:
         if title in self._ignored:
             return IGNORED
-        res = scribus.valueDialog(title, message)
+        res = scribus.valueDialog(title, str(message))
         if res in self.ignore_words:
             self._ignored.add(title)
+        elif res == "clear":
+            self._ignored.clear()
 
         return res
 

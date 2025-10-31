@@ -1,17 +1,19 @@
-from dataclasses import field, MISSING
+from dataclasses import dataclass, field, MISSING
 import datetime
-from functools import cache
+from functools import cache, partial
 
 import scribus
 
-from dandiscribe.data import frozen_dataclass, Margins, Size
+from dandy_lib.datatypes.twodee import Size
+
+from dandiscribe.data import Margins
 from dandiscribe.enums import PAGESIDE
 
 
-@frozen_dataclass
+@dataclass
 class Page:
-    page_number: int = None
-    size: Size = field(default=Size(*scribus.PAPER_A5))
+    page_number: int
+    size: Size = field(default_factory=partial(Size, *scribus.PAPER_A5))
     master_page: str = None
     is_master: bool = False
 
@@ -30,7 +32,6 @@ class Page:
     def as_master_page(self) -> "Page":
         return self.__class__(**(self.__dict__ | {"is_master": True}))
 
-    @cache
     def _get_margins_and_usable_size(self) -> tuple[Margins, Size]:
         try:
             margins = Margins(*scribus.getPageMargins())
@@ -81,10 +82,9 @@ class Page:
         if not any([self.is_master, draw_master, self.master_page is None]):
             scribus.applyMasterPage(self.master_page, self.page_number)
 
-
-@frozen_dataclass
+@dataclass
 class SpreadPage(Page):
-    side: PAGESIDE
+    side: PAGESIDE = None
 
     def __post_init__(self):
         if self.side is None or self.side is MISSING:

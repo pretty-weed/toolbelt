@@ -1,0 +1,1 @@
+pdfinfo "$1" | grep "Page size"

@@ -1,66 +1,28 @@
+from collections import namedtuple
 from dataclasses import dataclass
-from functools import partial
-from typing import Iterator
+import datetime
+from enum import Enum
+from functools import cache, partial
+from typing import Iterator, Union
 
 import scribus
 
-from dandiscribe.enums import COLORS
+from dandiscribe.enums import HAlign, VAlign
 
-frozen_dataclass = partial(dataclass, frozen=True, kw_only=True)
+@dataclass
+class Align:
+    vertical: VAlign = VAlign.TOP
+    horizontal: HAlign = HAlign.LEFT
 
+_Margins = namedtuple("Margins", ["top", "right", "bottom", "left"])
+class Margins(_Margins):
 
-COLOR_VALUES = {
-    COLORS.LIGHT_BLUE: (64, 18, 0, 2),
-    COLORS.PINK: (0, 31, 25, 4),
-    COLORS.WHITE: (0, 0, 0, 0),
-}
-GREY_VAL = (
-    sum(COLOR_VALUES[COLORS.LIGHT_BLUE]) // 4 + sum(COLOR_VALUES[COLORS.PINK])
-) // 2
-COLOR_VALUES[COLORS.GREY] = (GREY_VAL, GREY_VAL, GREY_VAL, GREY_VAL)
+    def with_top(self, top_val: int):
+        return self.__class__(top_val, self.right, self.bottom, self.left)
+    def with_right(self, right_val: int):
+        return self.__class__(self.top, right_val, self.bottom, self.left)
+    def with_bottom(self, bottom_val: int):
+        return self.__class__(self.top, self.right, bottom_val, self.left)
+    def with_left(self, left_val: int):
+        return self.__class__(self.top, self.right, self.bottom, left_val)
 
-for color, values in COLOR_VALUES.items():
-    if color in scribus.getColorNames():
-        scribus.changeColorCMYK(color, *values)
-    else:
-        scribus.defineColorCMYK(color, *values)
-
-
-class NonNegInt(int):
-    @classmethod
-    def __new__(cls, val):
-        if val < 0:
-            raise ValueError("Negative values not allowed")
-        super().__new__(val)
-
-
-@frozen_dataclass
-class LineStyle:
-    weight: NonNegInt
-    style: int
-
-
-@dataclass(frozen=True)
-class Margins:
-    top: NonNegInt
-    right: NonNegInt
-    bottom: NonNegInt
-    left: NonNegInt
-
-    def __iter__(self) -> Iterator[int]:
-        yield from [self.top, self.left, self.bottom, self.right]
-
-
-@dataclass(frozen=True)
-class Size:
-    width: NonNegInt
-    height: NonNegInt
-
-    @classmethod
-    def factory(cls, *in_vals):
-        if len(in_vals) == 1:
-            return cls(in_vals[0], in_vals[0])
-        return cls(*in_vals)
-
-    def __iter__(self) -> Iterator[int]:
-        yield from [self.width, self.height]

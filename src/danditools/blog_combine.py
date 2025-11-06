@@ -75,9 +75,6 @@ def main():
             to_remove = []
             for element in child.descendants:
                 nm = element.name
-                if "BEN" in str(element.text).upper() and "cher" not in element.text.lower(): # element.name not in (None, "em", "svg", "strong", "blockquote", "figure", "path", "p", "wow-image", "a", "u", "div", "span", "br", "button", "img"):
-                    import pdb
-                    pdb.set_trace()
                 #to_remove.append(element)
             for element in to_remove:
                 element.extract()

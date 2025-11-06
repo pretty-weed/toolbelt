@@ -14,7 +14,7 @@ dependencies = [
     "pyyaml~=6.0",
     "platformdirs~=4.3",
     "pypdf~=6.1",
-    "dandy_lib@git+http://github.com/pretty-weed/py_libs@v0.1.5",
+    "dandy_lib@git+http://github.com/pretty-weed/py_libs@v0.3.0",
 ]
 
 [tool.setuptools.package-data]
@@ -33,6 +33,7 @@ xrandr-parse = "danditools.xrandr_parse:main"
 blog-combine = "danditools.blog_combine:main"
 cleanup-transcript = "danditools.cleanup_transcript:main"
 pdf-split = "danditools.pdf:split"
+pdf-demo = "danditools.pdf:demo"
 
 [tool.setuptools.dynamic]
 readme = {file = ["README.md"], content-type = "text/markdown"}

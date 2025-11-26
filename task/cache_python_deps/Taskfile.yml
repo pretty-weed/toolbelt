@@ -10,7 +10,7 @@ vars:
     {{- else if has .CACHE_SELECTOR (list "" "LOCAL") }}{{ .LOCAL_CACHE }}
     {{- else }}{{ .WHEEL_CACHE }}
     {{- end -}}
-  EXISTS_ACTION: '{{ .EXISTS_ACTION | default "wipe" }}'
+  EXISTS_ACTION: '{{ .EXISTS_ACTION | default "w" }}'
 
 
 tasks:
@@ -21,7 +21,8 @@ tasks:
     requires:
       vars: 
         - name: EXISTS_ACTION
-          enum: ["switch", "ignore", "wipe", "backup", "abort", "s", "i", "w", "b", "a"]
+          # "switch", "ignore", "wipe", "backup", "abort"
+          enum: [ "s", "i", "w", "b", "a"]
     cmds:
       - 'echo "EXISTS_ACTION: {{ .EXISTS_ACTION }}"'
 

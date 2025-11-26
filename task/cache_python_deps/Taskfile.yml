@@ -28,7 +28,7 @@ tasks:
     requires:
       vars: 
         - name: PACKAGES
-        - name: EXISTS_ACTION:
+        - name: EXISTS_ACTION
           enum: ["switch", "ignore", "wipe", "backup", "abort", "s", "i", "w", "b", "a"]
     cmds:
       - '{{ .PYTHON }} -m pip {{ .PIP_ARGS }} download --check-build-dependencies --exists_action={{ .EXISTS_ACTION }} --dest={{ .CACHE_DIR }} {{ .PACKAGES }}'

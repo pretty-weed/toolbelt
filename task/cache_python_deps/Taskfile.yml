@@ -27,5 +27,5 @@ tasks:
     requires:
       vars: ["PACKAGES"]
     cmds:
-      - '{{ .PYTHON }} -m pip {{ .PIP_ARGS }} install --download={{ .CACHE_DIR }} {{ .PACKAGES }}'
+      - '{{ .PYTHON }} -m pip {{ .PIP_ARGS }} download={{ .CACHE_DIR }} {{ .PACKAGES }}'
 

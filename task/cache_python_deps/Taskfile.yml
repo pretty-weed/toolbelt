@@ -1,0 +1,31 @@
+version: "3"
+vars:
+  GLOBAL_CACHE: '{{ .HOST_WHEEL_CACHE_DIR | default "/var/cache/wheels"}}'
+  USER_CACHE: '{{ .USER_WHEEL_CACHE_DIR | default (printf "%s%s" "${HOME}/.local" .GLOBAL_CACHE ) }}'
+  LOCAL_CACHE: '{{.LOCAL_CACHE_DIR | default ".wheels"}}'
+  CACHE_SELECTOR: '{{ .WHEEL_CACHE | default "" | upper }}'
+  CACHE_DIR: >
+    {{ if eq .CACHE_SELECTOR "GLOBAL" }}{{ .GLOBAL_CACHE }}
+    {{- else if eq .CACHE_SELECTOR "USER" }}{{ .USER_CACHE }}
+    {{- else if has .CACHE_SELECTOR (list "" "LOCAL") }}{{ .LOCAL_CACHE }}
+    {{- else }}{{ .WHEEL_CACHE }}
+    {{- end -}}
+
+tasks:
+  default:
+    cmds:
+      - 'echo "WHEEL_CACHE: {{ .WHEEL_CACHE }}"'
+      - 'echo "GLOBAL_CACHE: {{ .GLOBAL_CACHE }}"'
+      - 'echo "USER_CACHE: {{ .USER_CACHE }}"'
+      - 'echo "LOCAL_CACHE: {{ .LOCAL_CACHE}}"'
+      - 'echo "CACHE_DIR: \"{{ .CACHE_DIR }}\""'
+
+  cache_deps:
+    vars:
+      PYTHON: '{{ .PYTHON | default "python3" }}'
+      PIP_ARGS: '{{ .PIP_ARGS | default "" }}'
+    requires:
+      vars: ["PACKAGES"]
+    cmds:
+      - '{{ .PYTHON }} -m pip {{ .PIP_ARGS }} install --download={{ .CACHE_DIR }} {{ .PACKAGES }}'
+

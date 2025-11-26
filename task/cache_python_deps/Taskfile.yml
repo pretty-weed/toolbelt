@@ -24,8 +24,12 @@ tasks:
     vars:
       PYTHON: '{{ .PYTHON | default "python3" }}'
       PIP_ARGS: '{{ .PIP_ARGS | default "" }}'
+      EXISTS_ACTION: '{{ .EXISTS_ACTION | default "wipe" }}'
     requires:
-      vars: ["PACKAGES"]
+      vars: 
+        - name: PACKAGES
+        - name: EXISTS_ACTION:
+          enum: ["switch", "ignore", "wipe", "backup", "abort", "s", "i", "w", "b", "a"]
     cmds:
-      - '{{ .PYTHON }} -m pip {{ .PIP_ARGS }} download --dest={{ .CACHE_DIR }} {{ .PACKAGES }}'
+      - '{{ .PYTHON }} -m pip {{ .PIP_ARGS }} download --check-build-dependencies --exists_action={{ .EXISTS_ACTION }} --dest={{ .CACHE_DIR }} {{ .PACKAGES }}'
 

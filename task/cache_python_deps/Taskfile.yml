@@ -24,7 +24,6 @@ tasks:
     vars:
       PYTHON: '{{ .PYTHON | default "python3" }}'
       PIP_ARGS: '{{ .PIP_ARGS | default "" }}'
-      EXISTS_ACTION: '{{ .EXISTS_ACTION | default "wipe" }}'
     requires:
       vars: 
         - name: PACKAGES

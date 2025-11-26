@@ -15,12 +15,15 @@ vars:
 
 tasks:
   default:
+    vars:
+      boop: doop
+      EXISTS_ACTION: '{{.EA | default "s"}}'
+    requires:
+      vars: 
+        - name: EXISTS_ACTION
+          enum: ["switch", "ignore", "wipe", "backup", "abort", "s", "i", "w", "b", "a"]
     cmds:
-      - 'echo "WHEEL_CACHE: {{ .WHEEL_CACHE }}"'
-      - 'echo "GLOBAL_CACHE: {{ .GLOBAL_CACHE }}"'
-      - 'echo "USER_CACHE: {{ .USER_CACHE }}"'
-      - 'echo "LOCAL_CACHE: {{ .LOCAL_CACHE}}"'
-      - 'echo "CACHE_DIR: \"{{ .CACHE_DIR }}\""'
+      - 'echo "EXISTS_ACTION: {{ .EXISTS_ACTION }}"'
 
   cache_deps:
     vars:
@@ -32,5 +35,5 @@ tasks:
         - name: EXISTS_ACTION
           enum: ["switch", "ignore", "wipe", "backup", "abort", "s", "i", "w", "b", "a"]
     cmds:
-      - '{{ .PYTHON }} -m pip {{ .PIP_ARGS }} download --check-build-dependencies --exists_action={{ .EXISTS_ACTION }} --dest={{ .CACHE_DIR }} {{ .PACKAGES }}'
+      - '{{ .PYTHON }} -m pip {{ .PIP_ARGS }} download --check-build-dependencies --exists-action={{ .EXISTS_ACTION }} --dest={{ .CACHE_DIR }} {{ .PACKAGES }}'
 

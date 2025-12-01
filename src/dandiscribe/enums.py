@@ -3,6 +3,7 @@ from enum import auto, unique, Enum, IntEnum, StrEnum
 
 import scribus
 
+
 class COLORS(StrEnum):
     NONE = "None"
     LIGHT_BLUE = "light_blue"
@@ -24,12 +25,14 @@ class PAGESIDE(StrEnum):
     LEFT = "left"
     RIGHT = "right"
 
+
 @unique
 class VAlign(IntEnum):
-    TOP= scribus.ALIGNV_TOP
-    CENTERED= scribus.ALIGNV_CENTERED
-    BOTTOM= scribus.ALIGNV_BOTTOM
+    TOP = scribus.ALIGNV_TOP
+    CENTERED = scribus.ALIGNV_CENTERED
+    BOTTOM = scribus.ALIGNV_BOTTOM
     JUSTIFIED = auto()
+
 
 @unique
 class HAlign(IntEnum):
@@ -38,6 +41,7 @@ class HAlign(IntEnum):
     RIGHT = scribus.ALIGN_RIGHT
     FORCED_JUSTIFY = scribus.ALIGN_FORCED
     JUSTIFY = scribus.ALIGN_BLOCK
+
 
 @unique
 class FontFeature(StrEnum):
@@ -54,15 +58,15 @@ class FontFeature(StrEnum):
     ALLCAPS = "allcaps"
     SMALLCAPS = "smallcaps"
 
+
 class FontFaces(StrEnum):
     CHANCERY_MED = "QTChanceryType Medium"
     CHANCERY_BOLD = "QTChanceryType Bold"
     CHANCERY_ITALIC = "QTChanceryType Italic"
     FRAKTUR = "Des Malers Fraktur Regular"
-    
+
+
 class LinespacingMode(IntEnum):
     FIXED = 0
     AUTOMATIC = 1
     BASELINE_GRID = 2
-
-    

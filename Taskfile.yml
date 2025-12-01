@@ -1,13 +1,99 @@
 version: "3"
+
 vars:
+  CURRENT_OS_REPO:
+    sh: lsb_release --id --short || echo "ubuntu"
+  CURRENT_TAG:
+    sh: lsb_release --release --short || echo "latest"
+  ALL_EXTRAS:
+    sh: python3 -c "import tomllib, pathlib;print(','.join(tomllib.loads(pathlib.Path('pyproject.toml').read_text()).get('project', {}).get('optional-dependencies', {}).keys()))"
+  EXTRAS:
+    ref: splitList "," .ALL_EXTRAS 
+  DOCKER_TAG_REPO: '{{ .CONTAINER_TAG | default "dd-toolbelt" }}'
+  CONTAINER_WORKING_COPY_DIR: /tmp/working_copy
+
   DEFAULT_BIN_DIR:
     sh: |
       bin_path=""
       for test_path in $(echo $PATH | tr ":" "\n"); do
-      [[ "${test_path}" == $HOME/*bin ]] && bin_path="${test_path}" 
+      [[ "${test_path}" == $HOME/*bin ]] && bin_path="${test_path}" || :
       done
-      test -n "${bin_path}" && echo "${bin_path}"
+      echo "${bin_path}"
+      (test -n "${bin_path}" && echo "${bin_path}") || (echo "${bin_path} does not exist! && exit 2")
+
+
+includes:
+
+  py-cache:
+    # This is what I would use for another repo:
+    # taskfile: 'https://raw.githubusercontent.com/pretty-weed/toolbelt/refs/heads/main/task/cache_python_deps/Taskfile.yml'
+    taskfile: 'task/cache_python_deps/Taskfile.yml'  
+    vars:
+      WHEEL_CACHE: '{{ .WHEEL_CACHE | default "local" }}'
+
 tasks:
+  default:
+    cmds:
+      - for: ["LOCAL", "USER", "GLOBAL", ".my-cool-cache"]
+        task: py-cache:default
+        vars:
+          CACHE_DIR: '{{ .ITEM }}'
+        cmd: 'echo {{ .py_cache.CACHE_DIR}} or {{ .CACHE_DIR}}'
+      - echo {{ .ALL_EXTRAS }}
+      - echo {{ .EXTRAS }}
+
+  build-test-container:
+    aliases: ["build-container"]
+    dir: '{{ .ROOT_DIR }}'
+    vars:
+      TAG: '{{ .TAG | default .DOCKER_TAG_REPO }}'
+      FROM_REPO: '{{ .FROM_REPO | default .CURRENT_OS_REPO | lower }}'
+      FROM_TAG: '{{ .FROM_TAG | default .CURRENT_TAG | lower }}'
+    sources:
+      - docker/testme/**
+    cmds:
+      - >
+        docker buildx build . --file docker/testme/Dockerfile 
+        --build-arg "BASE_REPO={{ .FROM_REPO }}" 
+        --build-arg "BASE_VERSION={{ .FROM_TAG }}" 
+        --build-arg "WORKING_COPY_DIR={{ .CONTAINER_WORKING_COPY_DIR }}"
+        --tag {{ .TAG }}:latest {{ .CLI_ARGS }}
+
+  in-container:
+    interactive: true
+    deps:
+      - build-test-container
+    vars:
+      TAG: '{{ .TAG | default (printf "%s:latest" .DOCKER_TAG_REPO) }}'
+
+    cmds:
+      - docker run -it -v "$(pwd):{{ .CONTAINER_WORKING_COPY_DIR }}"  {{ .TAG }}
+
+
+  cache-deps:
+    preconditions:
+      - cmd: exit 12 
+        msg: "importlib_metadata must be installed in the current python env"
+    vars:
+      BUILD_DEPS: "setuptools setuptools-scm wheel"
+
+    cmds:
+      - for: ["", "[profile]"]
+        task: py-cache:cache_deps
+        vars:
+          PACKAGES: '{{ .ROOT_DIR }}{{ .ITEM }} {{ .BUILD_DEPS }}'
+
+  install:
+    vars:
+      PACKAGE: '.'
+      OFFLINE: '{{ .OFFLINE | default "" }}'
+    preconditions:
+      # I would do this with requires:{vars:{name: enum:}} but that doesn't support a ref it seems
+      - cmd: ":" # TODO, fail if package is not a valid EXTRA
+    cmds:
+      # always do an editable install, as that caches the github dep
+      - 'pip install --find-links=file:{{ .CACHE_DIR }} {{ if .OFFLINE }}--no-index{{ end }} -e {{ .PACKAGE }}'
+
   scribus-install:
     interactive: true
     cmds:

@@ -1,9 +1,9 @@
 [project]
 name = "danditools"
 dynamic = ["version", "readme"]
-description = "my personal toolbelt"
+description = "My personal toolbelt"
 requires-python = "~=3.13"
-license = {file="LICENSE.md"}
+license = "GPL-3.0-only"
 authors = [{name="Dandelion Good", email = "dandeliongood@proton.me"}]
 
 dependencies = [
@@ -17,15 +17,86 @@ dependencies = [
     "dandy_lib@git+http://github.com/pretty-weed/py_libs@v0.3.0",
 ]
 
+[tool.setuptools.dynamic]
+readme = {file = ["README.md"], content-type = "text/markdown"}
+
 [tool.setuptools.package-data]
 dandiscribe = ["routines.yml", "fonts/OFL.txt", "fonts/*/*.ttf", "fonts/*/*.otf"]
 
-[project.optional-dependencies]
+danditools = ["type_stubs/py.typed"]
 
-profile = ["snakeviz~=2.2"]
+[project.optional-dependencies]
+test = ["tox~=4.28"]
+tooling = [
+    "pre-commit~=4.3",
+    "reorder-python-imports~=3.16",
+    "types-PyYAML~=6.0",
+    "pytest-mypy~=1.0",
+    "types-icalendar",
+    "mypy~=1.18"
+]
+pytest = [
+    "pytest-cov~=7.0",
+    "pytest~=9.0",
+    "pytest-xdist~=3.8"
+]
 lint = ["black~=25.1"]
-debug = ["debugpy"]
-test = ["pytest"]
+profile = ["snakeviz~=2.2"]
+type = [
+    "types-PyYAML~=6.0",
+    "pytest-mypy~=1.0",
+    "types-icalendar",
+    "types-requests",
+    "mypy~=1.18"
+]
+clean = [
+    "coverage~=7.12"
+]
+
+
+[tool.tox]
+requires = ["tox~=4.28", "virtualenv-pyenv"]
+extras = ["pytest"]
+env_list = ["clean", "3.13", "3.14", "3.15", "type", "lint"]
+
+
+[tool.tox.env_run_base]
+description = "Run test under {base_python}"
+extras = ["pytest"]
+commands = [["pytest", "--cov=dandy_lib", "--cov-append", "--cov-report=term-missing", { replace = "posargs", default = ["-vv"], extend = true } ]]
+[tool.tox.env_run_base.set_env]
+VIRTUALENV_DISCOVERY = "pyenv"
+
+
+[tool.tox.env.clean]
+skip_install = true
+deps = ["coverage"]
+allowlist_externals = ["which"]
+commands = [["which", "-a", "coverage"], ["coverage", "erase"]]
+
+[tool.tox.env.report]
+skip_install = true
+deps = ["coverage"]
+commands = [["coverage", "report", "--fail-under=100"]]
+
+[tool.tox.env.pyenv]
+requires = ["virtualenv-pyenv"]
+commands = [["pytest", { replace = "posargs", default = [], extend = true } ]]
+[tool.tox.env.pyenv.set_env]
+VIRTUALENV_DISCOVERY = "pyenv"
+
+[tool.tox.env.type]
+description = "run type check on code base"
+extras = ["type"]
+commands = [["mypy", "src"], ["mypy", "tests"]]
+[tool.tox.env.type.set_env]
+MYPATH = "type_stubs"
+
+
+[tool.tox.env.lint]
+description = "Run linting on code base"
+extras = ["lint"]
+commands = [["black", "src"], ["black", "tests"]]
 
 [project.scripts]
 scraper = "danditools.scraper:main"
@@ -35,12 +106,12 @@ cleanup-transcript = "danditools.cleanup_transcript:main"
 pdf-split = "danditools.pdf:split"
 pdf-demo = "danditools.pdf:demo"
 
-[tool.setuptools.dynamic]
-readme = {file = ["README.md"], content-type = "text/markdown"}
+
+[tool.setuptools_scm]
 
 [tool.black]
 line-length = 80
 
 [build-system]
-requires = ["setuptools", "setuptools-scm", "wheel"]
+requires = ["setuptools>=80", "setuptools-scm[simple]>=8", "wheel"]
 build-backend = "setuptools.build_meta"

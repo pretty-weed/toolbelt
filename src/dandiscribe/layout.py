@@ -82,6 +82,7 @@ class Page:
         if not any([self.is_master, draw_master, self.master_page is None]):
             scribus.applyMasterPage(self.master_page, self.page_number)
 
+
 @dataclass
 class SpreadPage(Page):
     side: PAGESIDE = None

@@ -1,0 +1,177 @@
+  package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+)
+
+/**
+ * Auto-generated code below aims at helping you parse
+ * the standard input according to the problem statement.
+ **/
+
+type Operation interface {
+	do() (int, bool)
+}
+
+type Value interface {
+	value() int
+	set(int)
+}
+
+type ImmediateValue int
+type RegisterValue struct {
+	*int
+}
+
+func (v *RegisterValue) value() int {
+	return *v.int
+func (v RegisterValue) value() int {
+    return v.int
+}
+}
+func (v *RegisterValue) set(val int) {
+	*v.int = val
+}
+
+func (v *ImmediateValue) value() int {
+	return int(*v)
+}
+func (v ImmediateValue) value() int {
+    return int(v)
+}
+
+func (v *ImmediateValue) set(val int) {
+	*v = ImmediateValue(val)
+}
+
+type Mov struct {
+	dest   RegisterValue
+	source Value
+}
+
+func (m Mov) do() (int, bool) {
+	m.dest.set(m.source.value())
+	return 0, false
+}
+
+type Add struct {
+	dest RegisterValue
+	op1  Value
+	op2  Value
+}
+
+func (a Add) do() (int, bool) {
+	a.dest.set(a.op1.value() + a.op2.value())
+	return 0, false
+}
+
+type Sub struct {
+	dest RegisterValue
+	op1  Value
+	op2  Value
+}
+
+func NewSub(values []Value) *Sub {
+	// todo, check if wrong number of values, errors
+	s := Sub{values[0].(RegisterValue), values[1], values[2]}
+	return &s
+}
+
+func (s Sub) do() (int, bool) {
+	s.dest.set(s.op1.value() - s.op2.value())
+	return 0, false
+}
+
+type JNE struct {
+	JumpTo          ImmediateValue
+	CompareRegister RegisterValue
+	Comparator      Value
+}
+
+func (j JNE) do() (int, bool) {
+	if j.CompareRegister.value() == j.Comparator.value() {
+		return 0, false
+	}
+	return j.JumpTo.value(), true
+}
+
+type Register struct {
+	a int
+	b int
+	c int
+	d int
+}
+
+func (r Register) getRegister(id string) (*int, error) {
+	switch id {
+	case "a":
+		return &r.a, nil
+	case "b":
+		return &r.b, nil
+	case "c":
+		return &r.c, nil
+	case "d":
+		return &r.d, nil
+	default:
+		return nil, fmt.Errorf("%s is not a valid register ID", id)
+	}
+}
+
+func (r Register) newValue(parse_val string) (Value, error) {
+	parse_val = strings.TrimSpace(parse_val)
+	val_i, err := strconv.Atoi(parse_val)
+	var val Value
+	if err == nil {
+		iv := ImmediateValue(val_i)
+		val = &iv
+	} else {
+		register, err := r.getRegister(parse_val)
+		if err != nil {
+			panic(err)
+		}
+		rv := RegisterValue{register}
+		val = &rv
+	}
+
+	return val, nil
+}
+
+func NewOp(parse_line string) (*Operation, error) {
+	parts := strings.Split(parse_line, " ")
+
+	switch parts[0] {
+	case "MOV":
+	case "ADD":
+	case "SUB":
+	case "JNE":
+
+	default:
+		return nil, fmt.Errorf("%s is not a valid op", parts[0])
+	}
+}
+
+func main() {
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Buffer(make([]byte, 1000000), 1000000)
+
+	var a, b, c, d int
+	scanner.Scan()
+	fmt.Sscan(scanner.Text(), &a, &b, &c, &d)
+
+	var n int
+	scanner.Scan()
+	fmt.Sscan(scanner.Text(), &n)
+
+	for i := 0; i < n; i++ {
+		scanner.Scan()
+		instruction := scanner.Text()
+		_ = instruction // to avoid unused error
+	}
+
+	// fmt.Fprintln(os.Stderr, "Debug messages...")
+	fmt.Println("a b c d") // Write answer to stdout
+}

@@ -39,7 +39,7 @@ class CleanupConf(NamedTuple):
     class_: str
     first_page: bool = False
     remaining_pages: bool = True
-    next_elements: list["CleanupConf"] = None
+    next_elements: list["CleanupConf"] | None = None
 
     def get_elements(self, element) -> list:
         raise NotImplementedError()

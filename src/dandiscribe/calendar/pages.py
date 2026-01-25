@@ -39,6 +39,10 @@ class CalendarPage(Page):
     ):
         return super().draw(master)
 
+    def get_delta_date(self, days=0, weeks=0) -> tuple[datetime.date, bool]:
+        dd = self.page_date + datetime.timedelta(days=days, weeks=week)
+        return dd, dd.month == self.page_date.month
+
 
 @dataclass(kw_only=True)
 class SpreadPage(Page):
@@ -291,7 +295,10 @@ class WeekSpreadPage(CalendarPage, SpreadPage):
     )
 
     def draw(
-        self, master=None, tasks: list[Task] | None = None, events: list[Event] | None = None
+        self,
+        master=None,
+        tasks: list[Task] | None = None,
+        events: list[Event] | None = None,
     ):
         super().draw(master=master)
         if events is None:

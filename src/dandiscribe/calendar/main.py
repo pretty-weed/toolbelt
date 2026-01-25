@@ -10,7 +10,7 @@ from logging import basicConfig, getLogger, DEBUG, INFO, WARNING
 from os import getenv
 from pathlib import Path
 from re import compile, Match
-from typing import Collection, ClassVar, Iterator, Union
+from typing import Any
 
 import scribus
 import time
@@ -26,12 +26,11 @@ basicConfig(
     format="%(asctime)s %(levelname)-8s %(message)s",
 )
 
-from dandy_lib.datatypes.twodee import Size
-
 import dandiscribe.colors as colors
 from dandiscribe.enums import COLORS, FILL, PAGESIDE, FontFaces
 from dandiscribe.data import Margins
 from .data import Event, Task
+from dandiscribe.exceptions import NewDocError
 from dandiscribe.layout import Page, SpreadPage
 from dandiscribe.objects import Box, Column, ColumnSection
 import dandiscribe.style as style
@@ -211,7 +210,7 @@ def make_doc(routines_file=ROUTINES_FILE) -> Document:
     if dates_prompt and dates_prompt != cached_prompt:
         cache_val("dates_prompt", dates_prompt, overwrite=True)
     logger.info("doing dates %s - %s", first_page_date, end)
-    event_by_date = {}
+    event_by_date: dict[Any, Any] = {}
     for event in Event.get_from_calendars(
         datetime.combine(first_page_date, time.min),
         datetime.combine(end, time.max),
@@ -311,10 +310,6 @@ def make_doc(routines_file=ROUTINES_FILE) -> Document:
     with PauseDrawing():
         doc.draw(tasks, event_by_date)
         # Checkbox.clean()
-
-
-class NewDocError(Exception):
-    pass
 
 
 def entry_point(routines_file=ROUTINES_FILE, profile=PROFILE, debug=False):

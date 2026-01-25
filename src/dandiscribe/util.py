@@ -1,7 +1,9 @@
+from collections.abc import Generator
 from contextlib import contextmanager
 from functools import partial
 from os import getenv
 from pathlib import Path
+from typing import Any, Callable
 from platformdirs import user_cache_dir
 
 import yaml
@@ -22,7 +24,7 @@ class PauseDrawing:
 
     @classmethod
     def __enter__(cls):
-        # perhaps profile to see if I should remove this when not necesary
+        # perhaps profile to see if I should remove this when not necessary
         scribus.setRedraw(False)
         cls._level += 1
 
@@ -44,6 +46,17 @@ def _get_env_bool(env_var: str):
         "i guess",
         "huyup",
     ]
+
+
+@contextmanager
+def save_sandwich(save_as: str | None = None) -> Generator[None, None, None]:
+    if save_as:
+        do_save: Callable[[], Any] = partial(scribus.saveDocAs, save_as)
+    else:
+        do_save: Callable[[], Any] = scribus.saveDoc
+    do_save()
+    yield
+    do_save()
 
 
 class Debug:
@@ -80,7 +93,7 @@ class Debug:
                 raise NotInDebugger()
             return
         elif not self.enabled.get(self.debug_id):
-            if reqiured:
+            if required:
                 raise DebuggerNotEnabled()
             return
 
@@ -138,10 +151,10 @@ def get_justify_adjustments(count: int, remainder: int) -> list[int]:
         raise ValueError("Division by zero")
     while remainder:
         if remainder >= count:
-            justify_adjustments = [
-                adj + remainder // rows for adj in justify_adjustments
+            justify_adjustments: list[int] = [
+                adj + remainder // count for adj in justify_adjustments
             ]
-            remainder = remainder % rows
+            remainder = remainder % count
         else:
             justify_adjustments[:remainder] = [
                 rem + 1 for rem in justify_adjustments[:remainder]
@@ -181,7 +194,7 @@ IGNORED = object()
 
 
 class _OkToIgnoreDialog:
-    _ignored = set()
+    _ignored: set[str] = set[str]()
 
     def __init__(
         self, ignore_words=frozenset(["cancel", "ignore", "no", "stop"])

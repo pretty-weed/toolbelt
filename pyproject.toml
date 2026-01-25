@@ -7,6 +7,7 @@ license = "GPL-3.0-only"
 authors = [{name="Dandelion Good", email = "dandeliongood@proton.me"}]
 
 dependencies = [
+    "annotated-types~=0.7.0",
     "beautifulsoup4~=4.13",
     "gdown~=5.2",
     "icalendar~=6.3",
@@ -14,7 +15,7 @@ dependencies = [
     "pyyaml~=6.0",
     "platformdirs~=4.3",
     "pypdf~=6.1",
-    "dandy_lib@git+http://github.com/pretty-weed/py_libs@v0.3.0",
+    "dandy_lib@git+http://github.com/pretty-weed/py_libs@v0.7.1",
 ]
 
 [tool.setuptools.dynamic]

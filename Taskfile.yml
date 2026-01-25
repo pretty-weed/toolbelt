@@ -96,10 +96,12 @@ tasks:
 
   scribus-install:
     interactive: true
+    vars:
+      TARGET: '{{ .CLI_ARGS | default "." }}'
     cmds:
       - sudo find /usr/share/scribus/scripts/dandi* -name __pycache__ -exec rm -rf {} \; || true
       - sudo rm -rf /usr/share/scribus/scripts/__pycache__
-      - sudo /usr/bin/python3 -m pip install '.' --upgrade --target '/usr/share/scribus/scripts/'
+      - sudo /usr/bin/python3 -m pip install '{{ .TARGET }}' --upgrade --target '/usr/share/scribus/scripts/'
       - sudo rm -rf ./build
     
   clean-scribus-pycache:
@@ -109,6 +111,14 @@ tasks:
         for fname in $(find /usr/share/scribus/scripts/ -name __pycache__); do
         test -e $fname && sudo rm -rf $fname
         done
+
+  generate-stubs:
+    aliases:
+      - stubs
+    vars:
+      STUB_DIR: type_stubs
+    cmds:
+      - stubgen --package danditools --package dandiscribe --output {{ .STUB_DIR }}
 
   install-shell-scripts:
     aliases:

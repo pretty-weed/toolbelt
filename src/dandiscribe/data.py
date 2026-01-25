@@ -1,9 +1,6 @@
-from collections import namedtuple
 from dataclasses import dataclass
-import datetime
-from enum import Enum
-from functools import cache, partial
-from typing import Iterator, Union
+from functools import lru_cache
+from typing import Iterator, NamedTuple, Union
 
 import scribus
 
@@ -16,10 +13,21 @@ class Align:
     horizontal: HAlign = HAlign.LEFT
 
 
-_Margins = namedtuple("Margins", ["top", "right", "bottom", "left"])
+class Margins(NamedTuple):
+    top: float
+    right: float
+    bottom: float
+    left: float
 
+    @property
+    @lru_cache
+    def horizontal(self) -> float:
+        return self.right + self.left
 
-class Margins(_Margins):
+    @property
+    @lru_cache
+    def vertical(self) -> float:
+        return self.top + self.bottom
 
     def with_top(self, top_val: int):
         return self.__class__(top_val, self.right, self.bottom, self.left)

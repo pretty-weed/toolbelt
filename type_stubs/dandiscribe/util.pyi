@@ -1,5 +1,6 @@
 import types
 from _typeshed import Incomplete
+from collections.abc import Generator
 from contextlib import contextmanager
 
 MISSING: Incomplete
@@ -9,6 +10,9 @@ class PauseDrawing:
     def __enter__(cls) -> None: ...
     @classmethod
     def __exit__(cls, type, value, traceback) -> None: ...
+
+@contextmanager
+def save_sandwich(save_as: str | None = None) -> Generator[None, None, None]: ...
 
 class Debug:
     enabled: Incomplete

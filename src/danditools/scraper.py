@@ -122,9 +122,7 @@ def get_download_links(
                 yield tag.text, full_url
 
 
-def download_file(
-    url, download_dir: Path, base_filename: str | None = None
-):
+def download_file(url, download_dir: Path, base_filename: str | None = None):
     """Save the file from the link (append a number if the filename already exists)"""
     if base_filename is None:
         base_filename: str = url.split("/")[-1].rsplit("?", 1)[0]

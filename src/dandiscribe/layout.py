@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any, Literal, NamedTuple
 
@@ -6,25 +5,16 @@ from dandiscribe.enums import PAGESIDE
 from dandiscribe.exceptions import InvalidSheet
 import scribus
 
+from dandy_lib.datatypes.tuples import MixableNamedTuple
 from dandy_lib.datatypes.twodee import Size
 
 from dandiscribe.data import Margins
 
-
-class Page(NamedTuple):
+class Page(MixableNamedTuple):
     page_number: int
     size: Size = Size.factory(*scribus.PAPER_A5)
     master_page: str | None = None
     is_master: bool = False
-
-    def __post_init__(self):
-        try:
-            if self.size.height <= 0:
-                raise ValueError("height must be greater than zero")
-            elif self.size.width <= 0:
-                raise ValueError("width must be greater than zero")
-        except AttributeError:
-            raise TypeError("Page size must be a Size() object")
 
     def as_page(self) -> "Page":
         return self.__class__(**(self.__dict__ | {"is_master": False}))
@@ -32,7 +22,7 @@ class Page(NamedTuple):
     def as_master_page(self) -> "Page":
         return self.__class__(**(self.__dict__ | {"is_master": True}))
 
-    def _get_margins_and_usable_size(self) -> tuple[Margins, Size]:
+    def get_margins_and_usable_size(self) -> tuple[Margins, Size]:
         try:
             margins = Margins(*scribus.getPageMargins())
         except TypeError as exc:
@@ -70,7 +60,7 @@ class Page(NamedTuple):
         while self.page_number >= scribus.pageCount():
             scribus.newPage(-1, self.master_page)
 
-    def draw(self, master: str | None = None):
+    def draw(self, master: str | None = None) -> None:
         if self.is_master:
             return
         draw_master: str | Literal[True] = master is None or master
@@ -79,8 +69,8 @@ class Page(NamedTuple):
             scribus.applyMasterPage(self.master_page, self.page_number)
 
 
-@dataclass(kw_only=True)
-class SpreadPage(Page):
+
+class SpreadPage(MixableNamedTuple, Page):
     inside_margin: int
     outside_margin: int
     side: PAGESIDE

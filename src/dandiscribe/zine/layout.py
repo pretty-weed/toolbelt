@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Callable, NamedTuple, Self
 from warnings import warn
 
+from dandy_lib.datatypes.tuples import MixableNamedTuple
 from dandy_lib.datatypes.twodee import Coord, Rect, Size
 import scribus
 
@@ -27,16 +28,30 @@ class Layout(enum.IntEnum):
     HALF = 2
 
 
-class PrintPage(NamedTuple):
+class PrintPage(MixableNamedTuple, Page):
     layout: Layout
     page: Page
     source_pages: tuple["FinalSheetSpread", ...]
 
+    """
     @property
     @lru_cache
     def page_number(self) -> int:
         return self.page.page_number
 
+    # Expose Page methods
+
+    def make(self) -> None:
+        return self.page.make()
+
+    def draw(self, master: str | None = None) -> None:
+        return self.page.draw(master)
+
+    def get_margins_and_usable_size(self) -> tuple[Margins, Size]:
+        return self.page.get_margins_and_usable_size()"""
+
+class SourcePage(Page):
+    pass
 
 class FinalSheetSpread(NamedTuple):
     left: int

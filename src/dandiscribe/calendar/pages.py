@@ -1,23 +1,22 @@
 from copy import copy
-from dataclasses import dataclass, field
+from collections.abc import Collection
+from dataclasses import MISSING, dataclass, field
 import datetime
 from functools import partial
-import random
-from typing import Collection, Callable
+from typing import Callable, NamedTuple
 
 from dandy_lib.datatypes.twodee import Size
 
 from dandiscribe.objects import Box, Column, ColumnSection
 from dandiscribe.data import Margins
 from dandiscribe.calendar.data import (
-    get_events,
     get_tasks,
     tasks_by_routine_day_and_time,
     Event,
     Task,
     TIME_OF_DAY,
 )
-from dandiscribe.calendar.layout import MonthDay, WeekCalToDsection
+from dandiscribe.calendar.layout import MonthDay, WeekCalToDSection
 from dandiscribe.enums import COLORS, FontFaces, PAGESIDE, HAlign
 from dandiscribe.layout import SpreadPage, Page
 import dandiscribe.style as style
@@ -27,8 +26,8 @@ from .data import Task, Event
 import scribus
 
 
-@dataclass(kw_only=True)
-class CalendarPage(Page):
+class CalendarPage(NamedTuple):
+    page: Page
     page_date: datetime.date = field(default_factory=datetime.date.today)
 
     def draw(
@@ -39,31 +38,9 @@ class CalendarPage(Page):
     ):
         return super().draw(master)
 
-    def get_delta_date(self, days=0, weeks=0) -> tuple[datetime.date, bool]:
-        dd = self.page_date + datetime.timedelta(days=days, weeks=week)
+    def get_delta_date(self, days: int = 0, weeks: int = 0) -> tuple[datetime.date, bool]:
+        dd = self.page_date + datetime.timedelta(days=days, weeks=weeks)
         return dd, dd.month == self.page_date.month
-
-
-@dataclass(kw_only=True)
-class SpreadPage(Page):
-    inside_margin: int = 30
-    outside_margin: int = 10
-    side: PAGESIDE
-
-    def _get_margins_and_usable_size(self):
-        margins, usable_size = super()._get_margins_and_usable_size()
-        usable_size.width = (
-            self.size.width - self.inside_margin - self.outside_margin
-        )
-        if self.side is PAGESIDE.LEFT:
-            margins = margins.with_right(self.inside_margin).with_left(
-                self.outside_margin
-            )
-        else:
-            margins = margins.with_left(self.inside_margin).with_right(
-                self.outside_margin
-            )
-        return margins, usable_size
 
 
 @dataclass(kw_only=True)
@@ -117,13 +94,13 @@ class MonthSpreadPage(CalendarPage, SpreadPage):
         if self.side is None or self.side is MISSING:
             raise TypeError("side must be provided as keyword")
 
-    padding: int = 5
-
-    def __post_init__(self):
+        
         if self.page_date.day != 1:
             raise ValueError(
                 f"{self.page_date} is not the first of the month ({self.page_date.weekday()})"
             )
+
+    padding: int = 5
 
     def draw(
         self,
@@ -296,7 +273,7 @@ class WeekSpreadPage(CalendarPage, SpreadPage):
 
     def draw(
         self,
-        master=None,
+        master: str | None = None,
         tasks: list[Task] | None = None,
         events: list[Event] | None = None,
     ):
@@ -395,7 +372,7 @@ class WeekSpreadPage(CalendarPage, SpreadPage):
                         )
                     ]
                     + [
-                        WeekCalToDsection.factory(
+                        WeekCalToDSection.factory(
                             time_of_day=time_of_day,
                             tasks=tasks_by_day_and_time.get(
                                 col_date.weekday(), dict()

@@ -118,7 +118,7 @@ tasks:
     vars:
       STUB_DIR: type_stubs
     cmds:
-      - stubgen --package danditools --package dandiscribe --output {{ .STUB_DIR }}
+      - stubgen --package danditools --package dandiscribe --output {{ .STUB_DIR }} {{ .CLI_ARGS }}
 
   install-shell-scripts:
     aliases:

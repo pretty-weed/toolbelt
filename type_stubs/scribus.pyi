@@ -441,7 +441,7 @@ def getTableStyles() -> ...: ...  # TODO need to fill in return
 def getTextColor() -> ...: ...  # TODO need to fill in return
 def getTextDistances() -> ...: ...  # TODO need to fill in return
 def getTextFlowMode() -> ...: ...  # TODO need to fill in return
-def getTextLength() -> ...: ...  # TODO need to fill in return
+def getTextLength(texObj: str = "") -> int: ...
 def getTextLines() -> ...: ...  # TODO need to fill in return
 def getTextShade() -> ...: ...  # TODO need to fill in return
 def getTextVerticalAlignment() -> ...: ...  # TODO need to fill in return
@@ -559,7 +559,7 @@ def setFillColor() -> ...: ...  # TODO need to fill in return
 def setFillShade() -> ...: ...  # TODO need to fill in return
 def setFillTransparency() -> ...: ...  # TODO need to fill in return
 def setFirstLineOffset() -> ...: ...  # TODO need to fill in return
-def setFont() -> ...: ...  # TODO need to fill in return
+def setFont(fontName: str, textObj: str = "") -> None: ... 
 def setFontFeatures() -> ...: ...  # TODO need to fill in return
 def setFontSize() -> ...: ...  # TODO need to fill in return
 def setGradientFill() -> ...: ...  # TODO need to fill in return

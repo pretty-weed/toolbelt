@@ -16,7 +16,7 @@ logger.setLevel(INFO)
 
 
 @dataclass(kw_only=True)
-class WeekCalToDsection(ColumnSection):
+class WeekCalToDSection(ColumnSection):
 
     time_of_day: TIME_OF_DAY = MISSING
 

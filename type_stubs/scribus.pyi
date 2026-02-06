@@ -501,7 +501,7 @@ def pasteObjects() -> list[str]: ...
 def placeVectorFile() -> ...: ...  # TODO need to fill in return
 def pointsToDocUnit() -> ...: ...  # TODO need to fill in return
 def progressReset() -> ...: ...  # TODO need to fill in return
-def progressSet() -> ...: ...  # TODO need to fill in return
+def progressSet(progress: float) -> ...: ...  # TODO need to fill in return
 def progressTotal() -> ...: ...  # TODO need to fill in return
 def raiseActiveLayer() -> ...: ...  # TODO need to fill in return
 def readPDFOptions() -> ...: ...  # TODO need to fill in return

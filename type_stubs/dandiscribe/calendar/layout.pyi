@@ -14,7 +14,20 @@ logger: Incomplete
 class WeekCalToDSection(ColumnSection):
     time_of_day: TIME_OF_DAY = ...
     @classmethod
-    def factory(cls, rows: int, sub_rows: int, time_of_day: TIME_OF_DAY, tasks: Collection[Task] = ..., events: Collection[Event] = ..., check_boxes: bool = True, background: COLORS | None = None, remaining_spaces: int = 2, title_style: style.TextStyle | style.ParagraphStyle = ..., title_line_style: style.LineStyle | None = None, task_style: style.TextStyle | style.ParagraphStyle = ...): ...
+    def factory(
+        cls,
+        rows: int,
+        sub_rows: int,
+        time_of_day: TIME_OF_DAY,
+        tasks: Collection[Task] = ...,
+        events: Collection[Event] = ...,
+        check_boxes: bool = True,
+        background: COLORS | None = None,
+        remaining_spaces: int = 2,
+        title_style: style.TextStyle | style.ParagraphStyle = ...,
+        title_line_style: style.LineStyle | None = None,
+        task_style: style.TextStyle | style.ParagraphStyle = ...,
+    ): ...
 
 @dataclass(kw_only=True)
 class MonthDay(ColumnSection):
@@ -23,4 +36,13 @@ class MonthDay(ColumnSection):
     events: InitVar[list[Event]] = ...
     past_month_color: InitVar[str] = ...
     @classmethod
-    def create(cls, day: int, week: int, first_date: datetime.date, page_month: int, tasks: list[Task] | None = None, past_month_color: str = ..., **kwargs): ...
+    def create(
+        cls,
+        day: int,
+        week: int,
+        first_date: datetime.date,
+        page_month: int,
+        tasks: list[Task] | None = None,
+        past_month_color: str = ...,
+        **kwargs,
+    ): ...

@@ -18,6 +18,7 @@ class FILL(StrEnum):
 class PAGESIDE(StrEnum):
     LEFT = 'left'
     RIGHT = 'right'
+    EITHER = 'either'
 
 class VAlign(IntEnum):
     TOP = ...

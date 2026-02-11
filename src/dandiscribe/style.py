@@ -60,9 +60,9 @@ class TextStyle:
         new_name: str,
         font: str | None = None,
         size: float | None = None,
-        features: Optional[list[enums.FontFeature]] = None,
-        fill_color: Optional[str] = None,
-        stroke_color: Optional[str] = None,
+        features: list[enums.FontFeature] | None = None,
+        fill_color: str | None = None,
+        stroke_color: str | None = None,
     ):
         return self.__class__(
             new_name,
@@ -132,32 +132,32 @@ class ParagraphStyle:
     name: str
     linespacing_mode: enums.LinespacingMode = enums.LinespacingMode.AUTOMATIC
     alignment: enums.HAlign = enums.HAlign.LEFT
-    vert_alignment: enums.VAlign = None
+    vert_alignment: enums.VAlign | None = None
     left_margin: int = 0
     right_margin: int = 0
     gap_before: int = 0
     gap_after: int = 0
     first_indent: int = 0
     has_drop_cap: bool = False
-    drop_cap_lines: int = None
-    drop_cap_offset: int = None
-    char_style: TextStyle = None
+    drop_cap_lines: int  | None = None
+    drop_cap_offset: int | None = None
+    char_style: TextStyle | None = None
 
     def new_with(
         self,
         new_name: str,
-        linespacing_mode: Optional[enums.LinespacingMode] = None,
-        alignment: Optional[enums.HAlign] = None,
-        vert_alignment: Optional[enums.VAlign] = None,
-        left_margin: Optional[int] = None,
-        right_margin: Optional[int] = None,
-        gap_before: Optional[int] = None,
-        gap_after: Optional[int] = None,
-        first_indent: Optional[int] = None,
-        has_drop_cap: Optional[int] = None,
-        drop_cap_lines: Optional[int] = None,
-        drop_cap_offset: Optional[int] = None,
-        char_style: Optional[TextStyle] = None,
+        linespacing_mode: enums.LinespacingMode | None = None,
+        alignment: enums.HAlign | None = None,
+        vert_alignment: enums.VAlign | None = None,
+        left_margin: int | None = None,
+        right_margin: int | None = None,
+        gap_before: int | None = None,
+        gap_after: int | None = None,
+        first_indent: int | None = None,
+        has_drop_cap: int | None = None,
+        drop_cap_lines: int | None = None,
+        drop_cap_offset: int | None = None,
+        char_style: TextStyle | None = None,
     ):
         return self.__class__(
             new_name,

@@ -42,6 +42,8 @@ class CalendarPage(NamedTuple):
         dd = self.page_date + datetime.timedelta(days=days, weeks=weeks)
         return dd, dd.month == self.page_date.month
 
+class CalendarMasterPage:
+    pass
 
 @dataclass(kw_only=True)
 class NotesSpread(CalendarPage, SpreadPage):

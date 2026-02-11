@@ -1,20 +1,44 @@
 import datetime
 from .data import Event as Event, Task as Task
 from _typeshed import Incomplete
-from dandiscribe.calendar.data import TIME_OF_DAY as TIME_OF_DAY, get_events as get_events, get_tasks as get_tasks, tasks_by_routine_day_and_time as tasks_by_routine_day_and_time
-from dandiscribe.calendar.layout import MonthDay as MonthDay, WeekCalToDSection as WeekCalToDSection
+from dandiscribe.calendar.data import (
+    TIME_OF_DAY as TIME_OF_DAY,
+    get_events as get_events,
+    get_tasks as get_tasks,
+    tasks_by_routine_day_and_time as tasks_by_routine_day_and_time,
+)
+from dandiscribe.calendar.layout import (
+    MonthDay as MonthDay,
+    WeekCalToDSection as WeekCalToDSection,
+)
 from dandiscribe.data import Margins as Margins
-from dandiscribe.enums import COLORS as COLORS, FontFaces as FontFaces, HAlign as HAlign, PAGESIDE as PAGESIDE
+from dandiscribe.enums import (
+    COLORS as COLORS,
+    FontFaces as FontFaces,
+    HAlign as HAlign,
+    PAGESIDE as PAGESIDE,
+)
 from dandiscribe.layout import Page as Page, SpreadPage as SpreadPage
-from dandiscribe.objects import Box as Box, Column as Column, ColumnSection as ColumnSection
+from dandiscribe.objects import (
+    Box as Box,
+    Column as Column,
+    ColumnSection as ColumnSection,
+)
 from dataclasses import dataclass, field
 from typing import Callable, Collection
 
 @dataclass(kw_only=True)
 class CalendarPage(Page):
     page_date: datetime.date = field(default_factory=datetime.date.today)
-    def draw(self, master=None, tasks: Collection[Task] | None = None, events: Collection[Event] | None = None): ...
-    def get_delta_date(self, days: int = 0, weeks: int = 0) -> tuple[datetime.date, bool]: ...
+    def draw(
+        self,
+        master=None,
+        tasks: Collection[Task] | None = None,
+        events: Collection[Event] | None = None,
+    ): ...
+    def get_delta_date(
+        self, days: int = 0, weeks: int = 0
+    ) -> tuple[datetime.date, bool]: ...
 
 @dataclass(kw_only=True)
 class NotesSpread(CalendarPage, SpreadPage):
@@ -23,7 +47,12 @@ class NotesSpread(CalendarPage, SpreadPage):
     row_max_offset: int = ...
     col_max_offset: int = ...
     fillers: dict[float, Callable] = field(default_factory=Incomplete)
-    def draw(self, master=None, tasks: list[Task] | None = None, events: dict[datetime.datetime, Event] | None = None): ...
+    def draw(
+        self,
+        master=None,
+        tasks: list[Task] | None = None,
+        events: dict[datetime.datetime, Event] | None = None,
+    ): ...
 
 @dataclass(kw_only=True)
 class MonthSpreadPage(CalendarPage, SpreadPage):
@@ -32,17 +61,29 @@ class MonthSpreadPage(CalendarPage, SpreadPage):
     def __post_init__(self) -> None: ...
     padding: int = ...
     def __post_init__(self) -> None: ...
-    def draw(self, master=None, tasks: list[Task] | None = None, events: dict[datetime.datetime, Event] | None = None): ...
+    def draw(
+        self,
+        master=None,
+        tasks: list[Task] | None = None,
+        events: dict[datetime.datetime, Event] | None = None,
+    ): ...
 
 @dataclass(kw_only=True)
 class WeekSpreadPage(CalendarPage, SpreadPage):
     def __post_init__(self) -> None: ...
     padding: int = ...
-    def draw(self, master: str | None = None, tasks: list[Task] | None = None, events: list[Event] | None = None): ...
+    def draw(
+        self,
+        master: str | None = None,
+        tasks: list[Task] | None = None,
+        events: list[Event] | None = None,
+    ): ...
 
 A5WeekSpreadPage: Incomplete
 A5MonthSpreadPage: Incomplete
 A5FrontPage: Incomplete
 A5NotesPage: Incomplete
 
-def gen_notes_spread_pages(left_page_number, factory=...) -> list[NotesSpread]: ...
+def gen_notes_spread_pages(
+    left_page_number, factory=...
+) -> list[NotesSpread]: ...

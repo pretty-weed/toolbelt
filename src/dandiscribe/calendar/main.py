@@ -68,53 +68,6 @@ logger = getLogger(__name__)
 logger.setLevel(DEBUG)
 
 
-@dataclass
-class Document:
-    pages: list[Page] = field(default_factory=list)
-    masterpages: dict[str, Page] = field(default_factory=dict)
-
-    def make(self):
-        assert len(set(page.size for page in self.pages)) == 1
-        if not scribus.newDocument(
-            tuple(self.pages[0].size),
-            (10, 10, 10, 15),
-            scribus.PORTRAIT,
-            1,
-            scribus.UNIT_POINTS,
-            scribus.PAGE_2,
-            1,
-            len(self.pages),
-        ):
-            raise NewDocError()
-
-    def draw(
-        self, tasks: list[Task] | None = None, events: list[Event] | None = None
-    ):
-        # make master pages
-        scribus.progressReset()
-        mp_count = len(set(page.master_page for page in self.pages))
-        total = mp_count + len(self.pages)
-        done = 0
-        for page in self.pages:
-            if page.master_page not in self.masterpages:
-                scribus.progressSet((done + 1) // total)
-                master_page = page.as_master_page()
-                self.masterpages[page.master_page] = master_page
-                master_page.draw(master=True, tasks=tasks)
-                done += 1
-
-                assert all([pg.is_master for pg in self.masterpages.values()])
-                assert not any([pg.is_master for pg in self.pages])
-
-        # make pages
-        for page in self.pages:
-            scribus.progressSet((done + 1) // total)
-            page.draw(
-                master=False, tasks=tasks, events=events.get(page.page_date)
-            )
-            done += 1
-
-
 def _delta_fom_match(orig: date, match: Match) -> timedelta:
     n, unit = match.groups()
     n = int(n)
@@ -160,6 +113,53 @@ def prompt_to_date(prompt_str, start_date: datetime) -> datetime | date:
     if match:
         return start_date + _delta_fom_match(page_date, match)
     return date.fromisoformat(prompt_str.replace("/", "-").replace(".", "-"))
+
+
+@dataclass
+class Document:
+    pages: list[Page] = field(default_factory=list)
+    masterpages: dict[str, MasterPage] = field(default_factory=dict)
+
+    def make(self):
+        assert len(set(page.size for page in self.pages)) == 1
+        if not scribus.newDocument(
+            tuple(self.pages[0].size),
+            (10, 10, 10, 15),
+            scribus.PORTRAIT,
+            1,
+            scribus.UNIT_POINTS,
+            scribus.PAGE_2,
+            1,
+            len(self.pages),
+        ):
+            raise NewDocError()
+
+    def draw(
+        self, tasks: list[Task] | None = None, events: list[Event] | None = None
+    ):
+        # make master pages
+        scribus.progressReset()
+        mp_count = len(set(page.master_page for page in self.pages))
+        total = mp_count + len(self.pages)
+        done = 0
+        for page in self.pages:
+            if page.master_page is not None and page.master_page not in self.masterpages:
+                scribus.progressSet((done + 1) // total)
+                master_page = page.as_master_page()
+                self.masterpages[page.master_page] = master_page
+                master_page.draw(master=True, tasks=tasks)
+                done += 1
+
+                assert all([pg.is_master for pg in self.masterpages.values()])
+                assert not any([pg.is_master for pg in self.pages])
+
+        # make pages
+        for page in self.pages:
+            scribus.progressSet((done + 1) // total)
+            page.draw(
+                master=False, tasks=tasks, events=events.get(page.page_date)
+            )
+            done += 1
 
 
 def make_doc(routines_file=ROUTINES_FILE) -> Document:

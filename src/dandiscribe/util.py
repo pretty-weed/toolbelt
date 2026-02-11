@@ -1,22 +1,30 @@
+from collections.abc import Generator
 from contextlib import contextmanager
 from functools import partial
 from os import getenv
 from pathlib import Path
+from typing import Any, Callable
 from platformdirs import user_cache_dir
 
 import yaml
 
-import debugpy
+try:
+    import debugpy
+except ImportError:
+    # it's an extra
+    pass
+
 import scribus
 
 MISSING = object()
+
 
 class PauseDrawing:
     _level = 0
 
     @classmethod
     def __enter__(cls):
-        # perhaps profile to see if I should remove this when not necesary
+        # perhaps profile to see if I should remove this when not necessary
         scribus.setRedraw(False)
         cls._level += 1
 
@@ -30,8 +38,25 @@ class PauseDrawing:
 
 
 def _get_env_bool(env_var: str):
-    return getenv(env_var, "").lower() in ["true", "t", "yes", "sure", "i guess", "huyup"]
+    return getenv(env_var, "").lower() in [
+        "true",
+        "t",
+        "yes",
+        "sure",
+        "i guess",
+        "huyup",
+    ]
 
+
+@contextmanager
+def save_sandwich(save_as: str | None = None) -> Generator[None, None, None]:
+    if save_as:
+        do_save: Callable[[], Any] = partial(scribus.saveDocAs, save_as)
+    else:
+        do_save: Callable[[], Any] = scribus.saveDoc
+    do_save()
+    yield
+    do_save()
 
 
 class Debug:
@@ -61,7 +86,6 @@ class Debug:
     def __exit__(self, type, value, traceback):
         pass
 
-
     @contextmanager
     def do_break(self, required: bool = False):
         if not self.entered.get(self.debug_id):
@@ -69,12 +93,13 @@ class Debug:
                 raise NotInDebugger()
             return
         elif not self.enabled.get(self.debug_id):
-            if reqiured:
+            if required:
                 raise DebuggerNotEnabled()
             return
 
         debugpy.set_trace()
         yield
+
 
 get_cache_dir = partial(user_cache_dir, "dandiscribe", "DandelionGood")
 CACHE_FILE = Path(get_cache_dir()).joinpath("cache.yml")
@@ -85,7 +110,8 @@ def get_cache_res():
         return MISSING
     return yaml.safe_load(CACHE_FILE.read_text())
 
-def get_cache_val(key:str, cache_res=None):
+
+def get_cache_val(key: str, cache_res=None):
     if cache_res is None:
         cache_res = get_cache_res()
     if cache_res is MISSING or not cache_res:
@@ -93,7 +119,8 @@ def get_cache_val(key:str, cache_res=None):
 
     return cache_res.get(key, MISSING)
 
-def cache_val(key:str, value, overwrite: bool = False):
+
+def cache_val(key: str, value, overwrite: bool = False):
     cache_res = get_cache_res()
     if cache_res is MISSING:
         cache_res = {}
@@ -111,32 +138,38 @@ def clear_cache_val(key: str):
     if cache_res is MISSING:
         return
     if key in cache_res:
-        del(cache_res[key])
+        del cache_res[key]
     else:
         return
-    with CACHE_FILE.open('r') as file_handle:
+    with CACHE_FILE.open("r") as file_handle:
         yaml.safe_dump(cache_res, file_handle)
-    
 
-def get_justify_adjustments(count: int, remainder:int) -> list[int]:
+
+def get_justify_adjustments(count: int, remainder: int) -> list[int]:
     justify_adjustments = [0] * count
     if not count:
         raise ValueError("Division by zero")
     while remainder:
         if remainder >= count:
-            justify_adjustments = [adj + remainder // rows for adj in justify_adjustments]
-            remainder = remainder % rows
+            justify_adjustments: list[int] = [
+                adj + remainder // count for adj in justify_adjustments
+            ]
+            remainder = remainder % count
         else:
-            justify_adjustments[:remainder] = [rem + 1 for rem in justify_adjustments[:remainder]]
+            justify_adjustments[:remainder] = [
+                rem + 1 for rem in justify_adjustments[:remainder]
+            ]
             remainder = 0
     return justify_adjustments
-    
+
 
 class NotInDebugger(Exception):
     pass
 
+
 class DebuggerNotEnabled(NotInDebugger):
     pass
+
 
 class TempGoTo:
     def __init__(self, page: int):
@@ -158,12 +191,14 @@ class TempGoTo:
 
 
 IGNORED = object()
+
+
 class _OkToIgnoreDialog:
-    _ignored = set()
+    _ignored: set[str] = set[str]()
+
     def __init__(
-            self, 
-            ignore_words=frozenset(
-                ["cancel", "ignore", "no", "stop"])):
+        self, ignore_words=frozenset(["cancel", "ignore", "no", "stop"])
+    ):
         self.ignore_words = ignore_words
 
     def __call__(self, title: str, message: str) -> str | object:
@@ -177,5 +212,5 @@ class _OkToIgnoreDialog:
 
         return res
 
-ok_to_ignore_dialog = _OkToIgnoreDialog() 
 
+ok_to_ignore_dialog = _OkToIgnoreDialog()

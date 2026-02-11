@@ -11,8 +11,12 @@ import yaml
 
 logger = getLogger(__name__)
 
-SCREEN_RE = re.compile(rb"(?:^|\n)Screen (?P<id>\d+): minimum (?P<min_x>\d+) ?x ?(?P<min_y>\d+), current (?P<cur_x>\d+) ?x ?(?P<cur_y>\d+), maximum (?P<max_x>\d+) ?x ?(?P<max_y>\d+)(?P<displays>(?:\n(?!Screen \d).*)*)")
-DISP_RE = re.compile(rb"\n(?P<id>[a-zA-Z0-9\-]+) (?P<conn>(?:dis)?connected) (?P<primary>primary )?(?P<conf>\d+x\d+(?:\+\d+\+\d+ )?(?:left )?)?\((?P<stuff>(?:[a-z]+\s*)*)\)(?P<real_size> \d+[a-z]+ x \d+[a-z]+)?(?P<modes>(?:\n\s.*)*)")
+SCREEN_RE = re.compile(
+    rb"(?:^|\n)Screen (?P<id>\d+): minimum (?P<min_x>\d+) ?x ?(?P<min_y>\d+), current (?P<cur_x>\d+) ?x ?(?P<cur_y>\d+), maximum (?P<max_x>\d+) ?x ?(?P<max_y>\d+)(?P<displays>(?:\n(?!Screen \d).*)*)"
+)
+DISP_RE = re.compile(
+    rb"\n(?P<id>[a-zA-Z0-9\-]+) (?P<conn>(?:dis)?connected) (?P<primary>primary )?(?P<conf>\d+x\d+(?:\+\d+\+\d+ )?(?:left )?)?\((?P<stuff>(?:[a-z]+\s*)*)\)(?P<real_size> \d+[a-z]+ x \d+[a-z]+)?(?P<modes>(?:\n\s.*)*)"
+)
 MODE_RE = re.compile
 """
 Screen 0: minimum 320 x 200, current 5040 x 3840, maximum 16384 x 16384
@@ -48,9 +52,13 @@ DisplayPort-8 disconnected (normal left inverted right x axis y axis)
 Dims = namedtuple("Dims", ["x", "y"])
 _Rate = namedtuple("Rate", ["rate", "active", "preferred"])
 
+
 class Rate(_Rate):
-    def __init__(self, rate: float, active: bool = False, preferred: bool = False):
+    def __init__(
+        self, rate: float, active: bool = False, preferred: bool = False
+    ):
         return super().__init__(rate, active, preferred)
+
 
 @dataclasses.dataclass
 class Mode:
@@ -66,20 +74,29 @@ class Mode:
         mode_match = cls.MODE_RE.match(in_str.lstrip(b"\n"))
         assert mode_match is not None
         x, y, refresh = mode_match.groups()
-        refresh_rates = [dir(m) for m in cls.REFRESH_RE.finditer(in_str[mode_match.endpos:].lstrip(b"\n"))]
+        refresh_rates = [
+            dir(m)
+            for m in cls.REFRESH_RE.finditer(
+                in_str[mode_match.endpos :].lstrip(b"\n")
+            )
+        ]
         return cls(Dims(x, y), refresh_rates)
 
     @classmethod
     def parse_many(cls, in_str: str) -> typing.Iterator["Mode"]:
-        
-        prefix_lens = set(len(m.group()) for m in cls.PREFIX_RE.finditer(in_str))
+
+        prefix_lens = set(
+            len(m.group()) for m in cls.PREFIX_RE.finditer(in_str)
+        )
 
         if not prefix_lens:
             return
         prefix_len = min(prefix_lens)
-        for mode_str in re.finditer(r"^\s+(\d+)x(\d+)\s+(\d+\.\d+)".encode(), in_str, re.MULTILINE):
-            
-            yield(cls.parse(mode_str.group()))
+        for mode_str in re.finditer(
+            r"^\s+(\d+)x(\d+)\s+(\d+\.\d+)".encode(), in_str, re.MULTILINE
+        ):
+
+            yield (cls.parse(mode_str.group()))
 
 
 @dataclasses.dataclass
@@ -92,13 +109,13 @@ class Display:
     size: tuple[int, int] = None
     modes: list[Mode] = dataclasses.field(default_factory=list)
 
+
 def query(verbose: bool = False):
-    cmd = [
-        "xrandr", "--query"
-    ]
+    cmd = ["xrandr", "--query"]
     if verbose:
         cmd.append("--verbose")
     return subprocess.check_output(cmd)
+
 
 def parse(verbose: bool = False):
 
@@ -113,15 +130,15 @@ def parse(verbose: bool = False):
         for disp_res in DISP_RE.finditer(disps):
             gd = disp_res.groupdict()
             display = Display(
-                gd["id"], 
-                connected=gd["conn"].strip() == b"connected", 
-                primary=bool(gd["primary"]), 
+                gd["id"],
+                connected=gd["conn"].strip() == b"connected",
+                primary=bool(gd["primary"]),
                 modes=list(Mode.parse_many(gd["modes"])),
                 stuff=gd.get("stuff"),
             )
             print(disp_res.groupdict())
             print(display)
-        
+
     """
     for line in raw.splitlines():
         if not line.strip(): 
@@ -142,7 +159,6 @@ def parse(verbose: bool = False):
     """
 
 
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--verbose", "-v", action="store_true")
@@ -151,5 +167,3 @@ def main():
     parsed = parser.parse_args()
 
     parse(verbose=parsed.verbose)
-
-    

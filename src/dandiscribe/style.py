@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import ClassVar
+from typing import Optional, ClassVar
 import scribus
 
 from dandy_lib.datatypes.numeric import bounded_int_factory, NonNegInt
@@ -39,9 +39,11 @@ class FillStyle:
 
 NO_FILL = FillStyle(color=enums.COLORS.NONE)
 
+
 @dataclass
 class ObjectStyle:
     fill: FillStyle
+
 
 @dataclass(frozen=True)
 class TextStyle:
@@ -53,8 +55,23 @@ class TextStyle:
     fill_color: enums.COLORS = enums.COLORS.RICH_BLACK
     stroke_color: enums.COLORS = enums.COLORS.NONE
 
-    def new_with(self, new_name: str, font: str | None = None, size: float | None = None, features: list[enums.FontFeature] = None, fill_color: str = None, stroke_color: str = None):
-        return self.__class__(new_name, font if font is not None else self.font, size if size is not None else self.size, features if features is not None else self.features, fill_color if fill_color is not None else self.fill_color, stroke_color if stroke_color is not None else self.stroke_color)
+    def new_with(
+        self,
+        new_name: str,
+        font: str | None = None,
+        size: float | None = None,
+        features: list[enums.FontFeature] | None = None,
+        fill_color: str | None = None,
+        stroke_color: str | None = None,
+    ):
+        return self.__class__(
+            new_name,
+            font if font is not None else self.font,
+            size if size is not None else self.size,
+            features if features is not None else self.features,
+            fill_color if fill_color is not None else self.fill_color,
+            stroke_color if stroke_color is not None else self.stroke_color,
+        )
 
     def setup(self):
         if not self.name in scribus.getCharStyles():
@@ -73,25 +90,27 @@ class TextStyle:
                 scribus.createCharStyle(
                     name=self.name,
                     fillcolor=self.fill_color,
-                    strokecolor = self.stroke_color,
+                    strokecolor=self.stroke_color,
                     **style_kwargs,
                 )
             except ValueError as exc:
-                raise ValueError(f"Failed to create Text style {self.name}: {self}") from exc
+                raise ValueError(
+                    f"Failed to create Text style {self.name}: {self}"
+                ) from exc
 
         self._inited[self.name] = True
+
     def apply(self, apply_obj):
         if not self._inited.get(self.name):
             self.setup()
         scribus.setCharacterStyle(self.name, apply_obj)
 
 
-
 WEEK_CAL_DAY_HDR_STYLE = TextStyle(
     "Week Cal Day Header",
     font=enums.FontFaces.CHANCERY_BOLD,
     size=13,
-    features=[enums.FontFeature.UNDERLINEWORDS]
+    features=[enums.FontFeature.UNDERLINEWORDS],
 )
 
 WEEK_OF_MAIN_STYLE = TextStyle(
@@ -113,45 +132,62 @@ class ParagraphStyle:
     name: str
     linespacing_mode: enums.LinespacingMode = enums.LinespacingMode.AUTOMATIC
     alignment: enums.HAlign = enums.HAlign.LEFT
-    vert_alignment: enums.VAlign = None
+    vert_alignment: enums.VAlign | None = None
     left_margin: int = 0
     right_margin: int = 0
     gap_before: int = 0
     gap_after: int = 0
     first_indent: int = 0
     has_drop_cap: bool = False
-    drop_cap_lines: int = None
-    drop_cap_offset: int = None
-    char_style: TextStyle = None
-
+    drop_cap_lines: int  | None = None
+    drop_cap_offset: int | None = None
+    char_style: TextStyle | None = None
 
     def new_with(
-        self, new_name: str,
-        linespacing_mode: enums.LinespacingMode=None,
-        alignment: enums.HAlign = None,
-        vert_alignment: enums.VAlign = None,
-        left_margin: int = None,
-        right_margin: int = None,
-        gap_before: int = None,
-        gap_after: int = None,
-        first_indent: int = None,
-        has_drop_cap: int = None,
-        drop_cap_lines: int = None,
-        drop_cap_offset: int = None,
-        char_style: TextStyle = None):
+        self,
+        new_name: str,
+        linespacing_mode: enums.LinespacingMode | None = None,
+        alignment: enums.HAlign | None = None,
+        vert_alignment: enums.VAlign | None = None,
+        left_margin: int | None = None,
+        right_margin: int | None = None,
+        gap_before: int | None = None,
+        gap_after: int | None = None,
+        first_indent: int | None = None,
+        has_drop_cap: int | None = None,
+        drop_cap_lines: int | None = None,
+        drop_cap_offset: int | None = None,
+        char_style: TextStyle | None = None,
+    ):
         return self.__class__(
-            new_name, 
-            linespacing_mode if linespacing_mode is not None else self.linespacing_mode,
+            new_name,
+            (
+                linespacing_mode
+                if linespacing_mode is not None
+                else self.linespacing_mode
+            ),
             alignment if alignment is not None else self.alignment,
-            vert_alignment if vert_alignment is not None else self.vert_alignment,
+            (
+                vert_alignment
+                if vert_alignment is not None
+                else self.vert_alignment
+            ),
             left_margin if left_margin is not None else self.left_margin,
             right_margin if right_margin is not None else self.right_margin,
             gap_before if gap_before is not None else self.gap_before,
             gap_after if gap_after is not None else self.gap_after,
             first_indent if first_indent is not None else self.first_indent,
             has_drop_cap if has_drop_cap is not None else self.has_drop_cap,
-            drop_cap_lines if drop_cap_lines is not None else self.drop_cap_lines,
-            drop_cap_offset if drop_cap_offset is not None else self.drop_cap_offset,
+            (
+                drop_cap_lines
+                if drop_cap_lines is not None
+                else self.drop_cap_lines
+            ),
+            (
+                drop_cap_offset
+                if drop_cap_offset is not None
+                else self.drop_cap_offset
+            ),
             char_style if char_style is not None else self.char_style,
         )
 
@@ -187,6 +223,7 @@ class ParagraphStyle:
             )
 
         self._inited[self.name] = True
+
     def apply(self, apply_obj):
         if self.char_style is not None:
             self.char_style.setup()
@@ -199,14 +236,21 @@ class ParagraphStyle:
 
 WEEK_CAL_TOD_HDR_STYLE = ParagraphStyle(
     "Week Cal ToD Header",
-    left_margin=5, char_style=WEEK_CAL_DAY_HDR_STYLE.new_with(
-    "Week Cal ToD Header",
-    font=enums.FontFaces.CHANCERY_ITALIC,
-    size=10,
-    features=[]
-))
+    left_margin=5,
+    char_style=WEEK_CAL_DAY_HDR_STYLE.new_with(
+        "Week Cal ToD Header",
+        font=enums.FontFaces.CHANCERY_ITALIC,
+        size=10,
+        features=[],
+    ),
+)
 
-WEEK_CAL_READINGS_STYLE = WEEK_CAL_TOD_HDR_STYLE.new_with("Week Cal Readings", char_style=WEEK_CAL_TOD_HDR_STYLE.char_style.new_with("Week Cal Readings", font=enums.FontFaces.CHANCERY_MED))
+WEEK_CAL_READINGS_STYLE = WEEK_CAL_TOD_HDR_STYLE.new_with(
+    "Week Cal Readings",
+    char_style=WEEK_CAL_TOD_HDR_STYLE.char_style.new_with(
+        "Week Cal Readings", font=enums.FontFaces.CHANCERY_MED
+    ),
+)
 
 MONTH_CAL_HEADER_STYLE = ParagraphStyle(
     "Month Cal Header",
@@ -214,24 +258,29 @@ MONTH_CAL_HEADER_STYLE = ParagraphStyle(
         "Month Cal Header",
         font=enums.FontFaces.CHANCERY_BOLD,
         size=19,
-        features=[enums.FontFeature.UNDERLINEWORDS]
-    )
+        features=[enums.FontFeature.UNDERLINEWORDS],
+    ),
 )
-MONTH_CAL_HEADER_STYLE_RALIGN = MONTH_CAL_HEADER_STYLE.new_with("Month Cal Header Right", alignment=enums.HAlign.RIGHT)
-MONTH_CAL_DAY_HDR_STYLE = MONTH_CAL_HEADER_STYLE.new_with("Month Cal day hdr", char_style=MONTH_CAL_HEADER_STYLE.char_style.new_with("Month Cal Day Hdr", size=13))
+MONTH_CAL_HEADER_STYLE_RALIGN = MONTH_CAL_HEADER_STYLE.new_with(
+    "Month Cal Header Right", alignment=enums.HAlign.RIGHT
+)
+MONTH_CAL_DAY_HDR_STYLE = MONTH_CAL_HEADER_STYLE.new_with(
+    "Month Cal day hdr",
+    char_style=MONTH_CAL_HEADER_STYLE.char_style.new_with(
+        "Month Cal Day Hdr", size=13
+    ),
+)
 
 WEEK_CAL_TASK_STYLE = ParagraphStyle(
     "Week Cal Task",
     vert_alignment=enums.VAlign.CENTERED,
     char_style=TextStyle(
-        "Week Cal Task", 
-        font=enums.FontFaces.CHANCERY_MED, 
-        size=8.0)
+        "Week Cal Task", font=enums.FontFaces.CHANCERY_MED, size=8.0
+    ),
 )
 
 MONTH_DATE_PSTYLE = ParagraphStyle(
-    "Month Date",
-    left_margin=5, char_style=MONTH_DATE_TSTYLE
+    "Month Date", left_margin=5, char_style=MONTH_DATE_TSTYLE
 )
 
 GUTTER_HEADER_STYLE = TextStyle(
@@ -241,18 +290,25 @@ GUTTER_HEADER_STYLE = TextStyle(
 )
 
 
-def fill_lined_basic(x, y, width, height, draw_master: bool, line_height: int = 13, line_style: LineStyle=OnePointBlackLine):
+def fill_lined_basic(
+    x,
+    y,
+    width,
+    height,
+    draw_master: bool,
+    line_height: int = 13,
+    line_style: LineStyle = OnePointBlackLine,
+):
     if draw_master is not None and not draw_master:
         return None
-        
+
     lines = []
-    for line_y in range(int(y), int(y+height+1), line_height):
-        line=scribus.createLine(x, line_y, x+width, line_y)
+    for line_y in range(int(y), int(y + height + 1), line_height):
+        line = scribus.createLine(x, line_y, x + width, line_y)
         line_style.apply(line)
         lines.append(line)
 
     return scribus.groupObjects(lines)
-
 
 
 FILLERS = frozenset([fill_lined_basic])

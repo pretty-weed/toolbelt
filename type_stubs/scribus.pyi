@@ -296,14 +296,14 @@ def combinePolygons() -> ...: ...  # TODO need to fill in return
 def copyObject() -> ...: ...  # TODO need to fill in return
 def copyObjects(objects: list[str]) -> ...: ...  # TODO need to fill in return
 def createBezierLine() -> ...: ...  # TODO need to fill in return
-def createCharStyle() -> ...: ...  # TODO need to fill in return
+def createCharStyle(name: str, font: str="", fontsize: float=float(), features: str="", fillcolor: str="", fillshade: str="", strokecolor: str="", strokeshade: str="", baselineoffset: float=0.0, shadowxoffset: float=0.0, shadowyoffset: float=0.0, outlinewidth: float=0.0, underlineoffset: float=0.0, underlinewidth: float=0.0, striketruoffset: float=0.0, strikethruwidth: float=0.0, scaleh: float=1.0, scalev: float=1.0, tracking: float=0.0, language: str="") -> ...: ...  # TODO need to fill in return
 def createCustomLineStyle() -> ...: ...  # TODO need to fill in return
 def createEllipse() -> ...: ...  # TODO need to fill in return
 def createImage() -> ...: ...  # TODO need to fill in return
 def createLayer() -> ...: ...  # TODO need to fill in return
 def createLine() -> ...: ...  # TODO need to fill in return
 def createMasterPage(pageName: str) -> None: ...  
-def createParagraphStyle() -> ...: ...  # TODO need to fill in return
+def createParagraphStyle(name: str, linespacingmode: int=1, linespacing: float=0.0, alignment: int=0, leftmargin: float=0.0, rightmargin: float=0.0, gapbefore: float=0.0, gapafter: float=0.0, firstindent: float=0.0, hasdropcap: int=0, dropcaplines: int=0, dropcapoffset: int=0, charstyle: str="", bullet: str="", tabs: list[tuple[float] | tuple[float, int] | tuple[float, int, str]]=[]) -> ...: ...  # TODO need to fill in return
 def createPathText() -> ...: ...  # TODO need to fill in return
 def createPdfAnnotation() -> ...: ...  # TODO need to fill in return
 def createPolyLine(points: list[float | int], name: str | None = None) -> str: ...  # TODO constraint len list to %2
@@ -520,7 +520,7 @@ def saveDoc() -> ...: ...  # TODO need to fill in return
 def saveDocAs(newName: str) -> None: ...
 def savePDFOptions() -> ...: ...  # TODO need to fill in return
 def savePageAsEPS() -> ...: ...  # TODO need to fill in return
-def scaleGroup(factor: float, name: str = "") -> None ...  
+def scaleGroup(factor: float, name: str = "") -> None : ...  
 def scaleImage() -> ...: ...  # TODO need to fill in return
 def scrollDocument() -> ...: ...  # TODO need to fill in return
 def selectFrameText() -> ...: ...  # TODO need to fill in return

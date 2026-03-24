@@ -95,6 +95,7 @@ tasks:
       - 'pip install --find-links=file:{{ .CACHE_DIR }} {{ if .OFFLINE }}--no-index{{ end }} -e {{ .PACKAGE }}'
 
   scribus-install:
+    aliases: ["scribus"]
     interactive: true
     vars:
       TARGET: '{{ .CLI_ARGS | default "." }}'

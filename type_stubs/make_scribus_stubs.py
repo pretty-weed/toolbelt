@@ -1,3 +1,4 @@
+from functools import _Descriptor
 from typing import Any, Callable
 
 from inspect import Signature, getmembers, isclass, ismemberdescriptor, ismodule, signature
@@ -32,7 +33,7 @@ def class_formatter(element_name: str, element: Callable[..., Any], return_hint:
     if callable(member):
       class_hint += f"\n    {function_formatter(member_name, member)}"
     elif ismemberdescriptor(member):
-      class_hint += f"\n    {}"
+      class_hint += f"\n    {render_descriptor_hint(member_name, member)}"
     else:
       class_hint += f"\n    {render_noncallable_hint(member_name, member)}"
   return class_hint
@@ -54,6 +55,9 @@ def render_noncallable_hint(element_name: str, element: Callable[..., Any]):
   hint: str = hint_map.get(element.__class__, str(element.__class__))
   return f"{element_name}: {hint}"
 
+
+def render_descriptor_hint(element_name: str, element: _Descriptor) -> str:
+  raise NotImplementedError()
 
 def main() -> None:
   hints = {}

@@ -1,24 +1,24 @@
 from enum import Enum as Enum, IntEnum, StrEnum
 
 class COLORS(StrEnum):
-    NONE = 'None'
-    LIGHT_BLUE = 'light_blue'
-    PINK = 'pink'
-    WHITE = 'white'
-    GREY = 'grey'
-    BLACK = 'Black'
-    WARM_BLACK = 'Warm Black'
-    COOL_BLACK = 'Cool Black'
-    RICH_BLACK = 'Rich Black'
+    NONE = "None"
+    LIGHT_BLUE = "light_blue"
+    PINK = "pink"
+    WHITE = "white"
+    GREY = "grey"
+    BLACK = "Black"
+    WARM_BLACK = "Warm Black"
+    COOL_BLACK = "Cool Black"
+    RICH_BLACK = "Rich Black"
 
 class FILL(StrEnum):
-    DOTS = 'dots'
-    CLEAR = 'clear'
+    DOTS = "dots"
+    CLEAR = "clear"
 
 class PAGESIDE(StrEnum):
-    LEFT = 'left'
-    RIGHT = 'right'
-    EITHER = 'either'
+    LEFT = "left"
+    RIGHT = "right"
+    EITHER = "either"
 
 class VAlign(IntEnum):
     TOP = ...
@@ -34,24 +34,24 @@ class HAlign(IntEnum):
     JUSTIFY = ...
 
 class FontFeature(StrEnum):
-    INHERIT = 'inherit'
-    BOLD = 'bold'
-    ITALIC = 'italic'
-    UNDERLINE = 'underline'
-    UNDERLINEWORDS = 'underlinewords'
-    STRIKE = 'strike'
-    SUPERSCRIPT = 'superscript'
-    SUBSCRIPT = 'subscript'
-    OUTLINE = 'outline'
-    SHADOWED = 'shadowed'
-    ALLCAPS = 'allcaps'
-    SMALLCAPS = 'smallcaps'
+    INHERIT = "inherit"
+    BOLD = "bold"
+    ITALIC = "italic"
+    UNDERLINE = "underline"
+    UNDERLINEWORDS = "underlinewords"
+    STRIKE = "strike"
+    SUPERSCRIPT = "superscript"
+    SUBSCRIPT = "subscript"
+    OUTLINE = "outline"
+    SHADOWED = "shadowed"
+    ALLCAPS = "allcaps"
+    SMALLCAPS = "smallcaps"
 
 class FontFaces(StrEnum):
-    CHANCERY_MED = 'QTChanceryType Medium'
-    CHANCERY_BOLD = 'QTChanceryType Bold'
-    CHANCERY_ITALIC = 'QTChanceryType Italic'
-    FRAKTUR = 'Des Malers Fraktur Regular'
+    CHANCERY_MED = "QTChanceryType Medium"
+    CHANCERY_BOLD = "QTChanceryType Bold"
+    CHANCERY_ITALIC = "QTChanceryType Italic"
+    FRAKTUR = "Des Malers Fraktur Regular"
 
 class LinespacingMode(IntEnum):
     FIXED = 0

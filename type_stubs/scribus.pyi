@@ -78,7 +78,9 @@ class ImageExport:
     @override
     def __reduce__(self) -> tuple[Any, ...]: ...
     @override
-    def __reduce_ex__(self, protocol: SupportsIndex) -> tuple[Any, ...]: ... # TODO this could be more explicit return
+    def __reduce_ex__(
+        self, protocol: SupportsIndex
+    ) -> tuple[Any, ...]: ...  # TODO this could be more explicit return
     @override
     def __setattr__(self, name: str, value: Any) -> None: ...
     @override
@@ -97,6 +99,7 @@ class NameExistsError(Exception): ...
 class NoDocOpenError(Exception): ...
 class NoValidObjectError(Exception): ...
 class NotFoundError(Exception): ...
+
 class PDFfile:
     def __init__(self, *args: Any, **kwargs: Any) -> None: ...
     __doc__: str
@@ -174,6 +177,7 @@ class PDFfile:
     # user: <class 'getset_descriptor'>
     # usespot: <class 'member_descriptor'>
     # version: <class 'member_descriptor'>
+
 class Printer:
     def __init__(self, *args: Any, **kwargs: Any) -> None: ...
     def __dir__(self) -> list[str]: ...
@@ -195,7 +199,9 @@ class Printer:
     def __new__(cls: object, *args: Any, **kwargs: Any) -> object: ...
     @override
     def __reduce__(self) -> tuple[Any, ...]: ...
-    def __reduce_ex__(self, protocol: SupportsIndex) -> tuple[Any, ...]: ... # TODO this could be more explicit return
+    def __reduce_ex__(
+        self, protocol: SupportsIndex
+    ) -> tuple[Any, ...]: ...  # TODO this could be more explicit return
     def __setattr__(self, name, value): ...
     def __sizeof__(self): ...
     # allPrinters: <class 'getset_descriptor'>
@@ -213,6 +219,7 @@ class Printer:
     # separation: <class 'getset_descriptor'>
     # ucr: <class 'member_descriptor'>
     # useICC: <class 'member_descriptor'>
+
 class ScribusException(Exception): ...
 class WrongFrameTypeError(Exception): ...
 
@@ -290,9 +297,18 @@ _i_str: str
 def closeDoc() -> ...: ...  # TODO need to fill in return
 def docChanged() -> ...: ...  # TODO need to fill in return
 def docUnitToPoints() -> ...: ...  # TODO need to fill in return
-def haveDoc() -> int : ... 
+def haveDoc() -> int: ...
+def newDoc(
+    size: tuple[float, float],
+    margins: tuple[float, float, float, float],
+    orientation: int,
+    firstPageNumber: int,
+    unit: int,
+    pagesType: int,
+    firstPageOrder: int,
+    numPages: int,
+) -> bool: ...
 
-def newDoc(size: tuple[float, float], margins: tuple[float, float, float, float], orientation: int, firstPageNumber: int, unit: int, pagesType: int, firstPageOrder: int, numPages: int) -> bool: ...
 newDoc.__doc__ = """
 Creates a new document and returns true if successful. The parameters have the following meaning:
 
@@ -316,15 +332,16 @@ example: newDocument(PAPER_A4, (10, 10, 20, 20), LANDSCAPE, 7, UNIT_POINTS, PAGE
 
 May raise ScribusError if is firstPageOrder bigger than allowed by pagesType. 
 """
+
 def newDocDialog() -> ...: ...  # TODO need to fill in return
 def newDocument() -> ...: ...  # TODO need to fill in return
+def openDoc(name: str) -> ...: ...  # TODO need to fill in return
 
 # =======
 # # Pages
 # =======
 
-def currentPageNumber() -> int: ... 
-
+def currentPageNumber() -> int: ...
 def getPageItems() -> list[str]: ...
 def getPageMargins() -> tuple[float, float, float, float]: ...
 def getPageNMargins() -> tuple[float, float, float, float]: ...
@@ -338,8 +355,8 @@ def getPageType() -> int: ...  # TODO constrain int return
 
 def applyMasterPage(masterPageName: str, pageNumber: int) -> None: ...
 def closeMasterPage() -> ...: ...  # TODO need to fill in return
-def createMasterPage(pageName: str) -> None: ...  
-def getMasterPage(pageNr: int) -> str : ... 
+def createMasterPage(pageName: str) -> None: ...
+def getMasterPage(pageNr: int) -> str: ...
 
 # =======
 # Layers
@@ -351,16 +368,12 @@ def getActiveLayer() -> ...: ...  # TODO need to fill in return
 def getLayerBlendmode() -> ...: ...  # TODO need to fill in return
 def getLayerTransparency() -> ...: ...  # TODO need to fill in return
 def getLayers() -> ...: ...  # TODO need to fill in returns
-
-
 def isLayerFlow() -> ...: ...  # TODO need to fill in return
 def isLayerLocked() -> ...: ...  # TODO need to fill in return
 def isLayerOutlined() -> ...: ...  # TODO need to fill in return
 def isLayerPrintable() -> ...: ...  # TODO need to fill in return
 def isLayerVisible() -> ...: ...  # TODO need to fill in return
-
 def raiseActiveLayer() -> ...: ...  # TODO need to fill in return
-
 def setLayerBlendmode() -> ...: ...  # TODO need to fill in return
 def setLayerFlow() -> ...: ...  # TODO need to fill in return
 def setLayerLocked() -> ...: ...  # TODO need to fill in return
@@ -374,7 +387,6 @@ def setActiveLayer() -> ...: ...  # TODO need to fill in return
 # =======
 # Frame Properties
 # =======
-
 
 def setLineCap() -> ...: ...  # TODO need to fill in return
 def setLineColor() -> ...: ...  # TODO need to fill in return
@@ -394,21 +406,14 @@ def copyObject() -> ...: ...  # TODO need to fill in return
 def copyObjects(objects: list[str]) -> ...: ...  # TODO need to fill in return
 def createTable() -> ...: ...  # TODO need to fill in return
 def createText() -> ...: ...  # TODO need to fill in return
-
 def createImage() -> ...: ...  # TODO need to fill in return
-
-
 def moveSelectionToBack() -> ...: ...  # TODO need to fill in return
 def moveSelectionToFront() -> ...: ...  # TODO need to fill in return
-
-
-def pasteObject() -> str: ... 
+def pasteObject() -> str: ...
 def pasteObjects() -> list[str]: ...
-
 def selectObject() -> ...: ...  # TODO need to fill in return
-
 def moveObject() -> ...: ...  # TODO need to fill in return
-def moveObjectAbs(x: float, y: float, name: str = "") -> None: ... 
+def moveObjectAbs(x: float, y: float, name: str = "") -> None: ...
 
 # =======
 # # Lines
@@ -416,7 +421,9 @@ def moveObjectAbs(x: float, y: float, name: str = "") -> None: ...
 
 def createBezierLine() -> ...: ...  # TODO need to fill in return
 def createLine() -> ...: ...  # TODO need to fill in return
-def createPolyLine(points: list[float | int], name: str | None = None) -> str: ...  # TODO constraint len list to %2
+def createPolyLine(
+    points: list[float | int], name: str | None = None
+) -> str: ...  # TODO constraint len list to %2
 def getLineStyle() -> ...: ...  # TODO need to fill in return
 
 # =======
@@ -425,8 +432,16 @@ def getLineStyle() -> ...: ...  # TODO need to fill in return
 
 def combinePolygons() -> ...: ...  # TODO need to fill in return
 def createEllipse() -> ...: ...  # TODO need to fill in return
-def createPolygon(points: list[float | int], name: str | None = None) -> str: ...
-def createRect(x: float | int, y: float | int, width: float | int, height: float | int, name: str | None) -> str: ...
+def createPolygon(
+    points: list[float | int], name: str | None = None
+) -> str: ...
+def createRect(
+    x: float | int,
+    y: float | int,
+    width: float | int,
+    height: float | int,
+    name: str | None,
+) -> str: ...
 
 # =======
 # Tables
@@ -438,8 +453,6 @@ def getTableFillColor() -> ...: ...  # TODO need to fill in return
 def getTableRowHeight() -> ...: ...  # TODO need to fill in return
 def getTableRows() -> ...: ...  # TODO need to fill in return
 def getTableStyle() -> ...: ...  # TODO need to fill in return
-
-
 def setTableBottomBorder() -> ...: ...  # TODO need to fill in return
 def setTableFillColor() -> ...: ...  # TODO need to fill in return
 def setTableLeftBorder() -> ...: ...  # TODO need to fill in return
@@ -456,7 +469,6 @@ def getCellFillColor() -> ...: ...  # TODO need to fill in return
 def getCellRowSpan() -> ...: ...  # TODO need to fill in return
 def getCellStyle() -> ...: ...  # TODO need to fill in return
 def getCellText() -> ...: ...  # TODO need to fill in return
-
 def setCellBottomBorder() -> ...: ...  # TODO need to fill in return
 def setCellBottomPadding() -> ...: ...  # TODO need to fill in return
 def setCellFillColor() -> ...: ...  # TODO need to fill in return
@@ -473,33 +485,68 @@ def setCellTopPadding() -> ...: ...  # TODO need to fill in return
 # # Style
 # =======
 
-def createCharStyle(name: str, font: str="", fontsize: float=float(), features: str="", fillcolor: str="", fillshade: str="", strokecolor: str="", strokeshade: str="", baselineoffset: float=0.0, shadowxoffset: float=0.0, shadowyoffset: float=0.0, outlinewidth: float=0.0, underlineoffset: float=0.0, underlinewidth: float=0.0, striketruoffset: float=0.0, strikethruwidth: float=0.0, scaleh: float=1.0, scalev: float=1.0, tracking: float=0.0, language: str="") -> ...: ...  # TODO need to fill in return
+def createCharStyle(
+    name: str,
+    font: str = "",
+    fontsize: float = float(),
+    features: str = "",
+    fillcolor: str = "",
+    fillshade: str = "",
+    strokecolor: str = "",
+    strokeshade: str = "",
+    baselineoffset: float = 0.0,
+    shadowxoffset: float = 0.0,
+    shadowyoffset: float = 0.0,
+    outlinewidth: float = 0.0,
+    underlineoffset: float = 0.0,
+    underlinewidth: float = 0.0,
+    striketruoffset: float = 0.0,
+    strikethruwidth: float = 0.0,
+    scaleh: float = 1.0,
+    scalev: float = 1.0,
+    tracking: float = 0.0,
+    language: str = "",
+) -> ...: ...  # TODO need to fill in return
 def createCustomLineStyle() -> ...: ...  # TODO need to fill in return
-def createParagraphStyle(name: str, linespacingmode: int=1, linespacing: float=0.0, alignment: int=0, leftmargin: float=0.0, rightmargin: float=0.0, gapbefore: float=0.0, gapafter: float=0.0, firstindent: float=0.0, hasdropcap: int=0, dropcaplines: int=0, dropcapoffset: int=0, charstyle: str="", bullet: str="", tabs: list[tuple[float] | tuple[float, int] | tuple[float, int, str]]=[]) -> ...: ...  # TODO need to fill in return
-
-
+def createParagraphStyle(
+    name: str,
+    linespacingmode: int = 1,
+    linespacing: float = 0.0,
+    alignment: int = 0,
+    leftmargin: float = 0.0,
+    rightmargin: float = 0.0,
+    gapbefore: float = 0.0,
+    gapafter: float = 0.0,
+    firstindent: float = 0.0,
+    hasdropcap: int = 0,
+    dropcaplines: int = 0,
+    dropcapoffset: int = 0,
+    charstyle: str = "",
+    bullet: str = "",
+    tabs: list[tuple[float] | tuple[float, int] | tuple[float, int, str]] = [],
+) -> ...: ...  # TODO need to fill in return
 def getLineStyles() -> ...: ...  # TODO need to fill in return
 def getParagraphStyles() -> list[str]: ...  # TODO need to fill in return
 def getCellStyles() -> ...: ...  # TODO need to fill in return
 def getTableStyles() -> ...: ...  # TODO need to fill in return
+
 # =======
 # Color
 # =======
 
-
 def changeColor(name: str, c: int, m: int, y: int, k: int) -> None: ...
-def changeColorCMYK(name: str, c: int, m: int, y: int, k: int) -> None: ... 
-def changeColorCMYKFloat(name: str, c: float, m: float, y: float, k: float) -> None: ...
-def changeColorLab(name: str, l: int, a: int, b: int) -> None: ...  
-def changeColorRGB(name: str, r: int, g: int, b: int) -> None: ...  
+def changeColorCMYK(name: str, c: int, m: int, y: int, k: int) -> None: ...
+def changeColorCMYKFloat(
+    name: str, c: float, m: float, y: float, k: float
+) -> None: ...
+def changeColorLab(name: str, l: int, a: int, b: int) -> None: ...
+def changeColorRGB(name: str, r: int, g: int, b: int) -> None: ...
 def changeColorRGBFloat(name: str, r: float, g: float, b: float) -> None: ...
-
 def defineColor() -> ...: ...  # TODO need to fill in return
 def defineColorCMYK() -> ...: ...  # TODO need to fill in return
 def defineColorCMYKFloat() -> ...: ...  # TODO need to fill in return
 def defineColorLab() -> ...: ...  # TODO need to fill in return
 def defineColorRGBFloat() -> ...: ...  # TODO need to fill in return
-
 def getColor() -> ...: ...  # TODO need to fill in return
 def getColorAsRGB() -> ...: ...  # TODO need to fill in return
 def getColorAsRGBFloat() -> ...: ...  # TODO need to fill in return
@@ -528,7 +575,9 @@ def flipObject() -> ...: ...  # TODO need to fill in return
 
 # -1 is not a correct default for page, but I'm not sure I can replicate this
 # well
-def getAllObjects(type: int = -1, page: int = -1, layer: str = "") -> list[str]: ...
+def getAllObjects(
+    type: int = -1, page: int = -1, layer: str = ""
+) -> list[str]: ...
 def getAllText() -> ...: ...  # TODO need to fill in return
 def getBaseLine() -> ...: ...  # TODO need to fill in return
 def getBleeds() -> ...: ...  # TODO need to fill in return
@@ -596,7 +645,7 @@ def getPropertyCType() -> ...: ...  # TODO need to fill in return
 def getPropertyNames() -> ...: ...  # TODO need to fill in return
 def getRotation() -> ...: ...  # TODO need to fill in return
 def getRowGuides() -> ...: ...  # TODO need to fill in return
-def getSelectedObject() -> str: ...  
+def getSelectedObject() -> str: ...
 def getSelectedTextRange() -> ...: ...  # TODO need to fill in return
 def getSize() -> tuple[float, float]: ...
 def getTextColor() -> ...: ...  # TODO need to fill in return
@@ -635,14 +684,18 @@ def loadStylesFromFile() -> ...: ...  # TODO need to fill in return
 def lockObject() -> ...: ...  # TODO need to fill in return
 def lowerActiveLayer() -> ...: ...  # TODO need to fill in return
 def masterPageNames() -> list[str]: ...
-def mergeTableCells(row: int, column: int, numRows: int, numColumns: int, name: str | None = None) -> None: ...
+def mergeTableCells(
+    row: int,
+    column: int,
+    numRows: int,
+    numColumns: int,
+    name: str | None = None,
+) -> None: ...
 def messageBox() -> ...: ...  # TODO need to fill in return
 def statusMessage() -> ...: ...  # TODO need to fill in return
-
 def newPage(where: int, masterPage: str = "") -> None: ...
 def newStyleDialog() -> ...: ...  # TODO need to fill in return
 def objectExists() -> ...: ...  # TODO need to fill in return
-def openDoc() -> ...: ...  # TODO need to fill in return
 def traceText() -> ...: ...  # TODO need to fill in return
 def pageCount() -> int: ...
 def placeVectorFile() -> ...: ...  # TODO need to fill in return
@@ -666,7 +719,7 @@ def saveDoc() -> ...: ...  # TODO need to fill in return
 def saveDocAs(newName: str) -> None: ...
 def savePDFOptions() -> ...: ...  # TODO need to fill in return
 def savePageAsEPS() -> ...: ...  # TODO need to fill in return
-def scaleGroup(factor: float, name: str = "") -> None : ...  
+def scaleGroup(factor: float, name: str = "") -> None: ...
 def scaleImage() -> ...: ...  # TODO need to fill in return
 def scrollDocument() -> ...: ...  # TODO need to fill in return
 def selectFrameText() -> ...: ...  # TODO need to fill in return
@@ -682,7 +735,9 @@ def setCornerRadius() -> ...: ...  # TODO need to fill in return
 def setCurrentPageSize() -> ...: ...  # TODO need to fill in return
 def setCursor() -> ...: ...  # TODO need to fill in return
 def setCustomLineStyle() -> ...: ...  # TODO need to fill in return
-def setDocType(facingPages: int, firstPageLeft: int) -> None: ...  # TODO need to fill in return
+def setDocType(
+    facingPages: int, firstPageLeft: int
+) -> None: ...  # TODO need to fill in return
 def setEditMode() -> ...: ...  # TODO need to fill in return
 def setExportableObject() -> ...: ...  # TODO need to fill in return
 def setFileAnnotation() -> ...: ...  # TODO need to fill in return
@@ -691,7 +746,7 @@ def setFillColor() -> ...: ...  # TODO need to fill in return
 def setFillShade() -> ...: ...  # TODO need to fill in return
 def setFillTransparency() -> ...: ...  # TODO need to fill in return
 def setFirstLineOffset() -> ...: ...  # TODO need to fill in return
-def setFont(fontName: str, textObj: str = "") -> None: ... 
+def setFont(fontName: str, textObj: str = "") -> None: ...
 def setFontFeatures() -> ...: ...  # TODO need to fill in return
 def setFontSize() -> ...: ...  # TODO need to fill in return
 def setGradientFill() -> ...: ...  # TODO need to fill in return
@@ -747,6 +802,7 @@ def unGroupObjects() -> ...: ...  # TODO need to fill in return
 def unlinkTextFrames() -> ...: ...  # TODO need to fill in return
 def valueDialog() -> ...: ...  # TODO need to fill in return
 def zoomDocument(double: float) -> ...: ...  # TODO need to fill in return
+
 # =======
 # <class 'float'>s
 # =======

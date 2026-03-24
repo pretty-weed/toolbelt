@@ -1,8 +1,16 @@
 from _typeshed import Incomplete
 from dandiscribe.data import Align as Align
 from dandiscribe.enums import FILL as FILL, HAlign as HAlign, VAlign as VAlign
-from dandiscribe.style import LineStyle as LineStyle, ParagraphStyle as ParagraphStyle, TextStyle as TextStyle
-from dandiscribe.util import TempGoTo as TempGoTo, get_justify_adjustments as get_justify_adjustments, ok_to_ignore_dialog as ok_to_ignore_dialog
+from dandiscribe.style import (
+    LineStyle as LineStyle,
+    ParagraphStyle as ParagraphStyle,
+    TextStyle as TextStyle,
+)
+from dandiscribe.util import (
+    TempGoTo as TempGoTo,
+    get_justify_adjustments as get_justify_adjustments,
+    ok_to_ignore_dialog as ok_to_ignore_dialog,
+)
 from dandy_lib.datatypes.twodee import Size
 from dataclasses import dataclass, field
 from typing import Callable, ClassVar
@@ -25,7 +33,16 @@ class Box:
     line_extra_length: int = ...
     draw_cb_func: Callable = ...
     def __post_init__(self) -> None: ...
-    def draw(self, x: int, y: int, width: int, height: int, master=None, prefill_from_bottom: bool = False, pre_fill_max_lines: int | None = None): ...
+    def draw(
+        self,
+        x: int,
+        y: int,
+        width: int,
+        height: int,
+        master=None,
+        prefill_from_bottom: bool = False,
+        pre_fill_max_lines: int | None = None,
+    ): ...
 
 @dataclass
 class Checkbox:
@@ -38,7 +55,6 @@ class Checkbox:
     def clean(cls) -> None: ...
 
 def draw_checkbox(x: int, y: int, size: Size, style: LineStyle) -> str: ...
-
 @dataclass
 class ColumnSection:
     title: str = ...
@@ -53,7 +69,14 @@ class ColumnSection:
     title_line_style: LineStyle | None = ...
     @property
     def rows(self): ...
-    def draw(self, x: int, y: int, width: int, height: int, master: bool | None = None) -> str: ...
+    def draw(
+        self,
+        x: int,
+        y: int,
+        width: int,
+        height: int,
+        master: bool | None = None,
+    ) -> str: ...
 
 @dataclass
 class Column:

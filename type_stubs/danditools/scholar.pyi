@@ -25,18 +25,26 @@ class PublicationInfo:
 class Result:
     title: str
     result_id: str
-    pub_type: str = field(metadata={'danditools': {'scholar': {'source': 'type'}}})
+    pub_type: str = field(
+        metadata={"danditools": {"scholar": {"source": "type"}}}
+    )
     publication_info: PublicationInfo
-    snippet: str = field(repr=False, compare=False, default='')
-    inline_links: dict[str, str | dict[str, str | int]] = field(compare=False, repr=False, default_factory=list)
+    snippet: str = field(repr=False, compare=False, default="")
+    inline_links: dict[str, str | dict[str, str | int]] = field(
+        compare=False, repr=False, default_factory=list
+    )
     position: int = field(compare=False, repr=False, default=None)
     link: str = field(compare=False, default=None)
-    resources: list[dict[str, str]] = field(compare=False, default_factory=list, repr=False)
+    resources: list[dict[str, str]] = field(
+        compare=False, default_factory=list, repr=False
+    )
     EXPORT_KEYS: ClassVar[list[str]] = ...
     @classmethod
     def from_json_obj(cls, json_obj) -> Result: ...
     @classmethod
-    def iter_from_results(cls, results, raw: bool = False) -> Generator[Incomplete]: ...
+    def iter_from_results(
+        cls, results, raw: bool = False
+    ) -> Generator[Incomplete]: ...
     def dump(self) -> dict: ...
 
 def author_key(result: Result) -> list[str]: ...
@@ -44,10 +52,23 @@ def citations_key(result: Result) -> int: ...
 
 class SortMethods(CallableChoiceEnum):
     @member
-    def author(results: list[Result], reverse: bool = False, subsorts: list['SortMethods'] | None = None): ...
+    def author(
+        results: list[Result],
+        reverse: bool = False,
+        subsorts: list["SortMethods"] | None = None,
+    ): ...
     @member
-    def citations(results: list[Result], reverse: bool = False, subsorts: list['SortMethods'] | None = None): ...
+    def citations(
+        results: list[Result],
+        reverse: bool = False,
+        subsorts: list["SortMethods"] | None = None,
+    ): ...
     def __call__(self, *args, **kwargs): ...
 
-def handle_write(output: PurePath, results: list, previous: list | None = None, sort: SortMethods | None = None): ...
+def handle_write(
+    output: PurePath,
+    results: list,
+    previous: list | None = None,
+    sort: SortMethods | None = None,
+): ...
 def query() -> None: ...

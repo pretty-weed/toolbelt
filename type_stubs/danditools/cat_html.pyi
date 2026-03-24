@@ -4,7 +4,13 @@ from bs4 import BeautifulSoup
 from pathlib import Path as Path, PurePath as PurePath
 from typing import NamedTuple
 
-def get_elements(soup: BeautifulSoup, tag: str | None = None, tag_id: str | None = None, tag_class: str | None = None, max_elements=None): ...
+def get_elements(
+    soup: BeautifulSoup,
+    tag: str | None = None,
+    tag_id: str | None = None,
+    tag_class: str | None = None,
+    max_elements=None,
+): ...
 
 class CleanupConf(NamedTuple):
     tag: str
@@ -12,7 +18,7 @@ class CleanupConf(NamedTuple):
     class_: str
     first_page: bool = ...
     remaining_pages: bool = ...
-    next_elements: list['CleanupConf'] | None = ...
+    next_elements: list["CleanupConf"] | None = ...
     def get_elements(self, element) -> list: ...
 
 class AppendAssembled(argparse.Action):

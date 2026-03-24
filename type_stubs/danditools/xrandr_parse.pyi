@@ -19,7 +19,9 @@ class _Rate(NamedTuple):
     preferred: Incomplete
 
 class Rate(_Rate):
-    def __init__(self, rate: float, active: bool = False, preferred: bool = False) -> None: ...
+    def __init__(
+        self, rate: float, active: bool = False, preferred: bool = False
+    ) -> None: ...
 
 @dataclasses.dataclass
 class Mode:
@@ -31,7 +33,7 @@ class Mode:
     @classmethod
     def parse(cls, in_str: str) -> Mode: ...
     @classmethod
-    def parse_many(cls, in_str: str) -> typing.Iterator['Mode']: ...
+    def parse_many(cls, in_str: str) -> typing.Iterator["Mode"]: ...
 
 @dataclasses.dataclass
 class Display:

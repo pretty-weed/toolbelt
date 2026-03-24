@@ -37,7 +37,15 @@ class TextStyle:
     features: list[enums.FontFeature] = field(default_factory=list)
     fill_color: enums.COLORS = ...
     stroke_color: enums.COLORS = ...
-    def new_with(self, new_name: str, font: str | None = None, size: float | None = None, features: list[enums.FontFeature] | None = None, fill_color: str | None = None, stroke_color: str | None = None): ...
+    def new_with(
+        self,
+        new_name: str,
+        font: str | None = None,
+        size: float | None = None,
+        features: list[enums.FontFeature] | None = None,
+        fill_color: str | None = None,
+        stroke_color: str | None = None,
+    ): ...
     def setup(self) -> None: ...
     def apply(self, apply_obj) -> None: ...
 
@@ -60,7 +68,22 @@ class ParagraphStyle:
     drop_cap_lines: int = ...
     drop_cap_offset: int = ...
     char_style: TextStyle = ...
-    def new_with(self, new_name: str, linespacing_mode: enums.LinespacingMode | None = None, alignment: enums.HAlign | None = None, vert_alignment: enums.VAlign | None = None, left_margin: int | None = None, right_margin: int | None = None, gap_before: int | None = None, gap_after: int | None = None, first_indent: int | None = None, has_drop_cap: int | None = None, drop_cap_lines: int | None = None, drop_cap_offset: int | None = None, char_style: TextStyle | None = None): ...
+    def new_with(
+        self,
+        new_name: str,
+        linespacing_mode: enums.LinespacingMode | None = None,
+        alignment: enums.HAlign | None = None,
+        vert_alignment: enums.VAlign | None = None,
+        left_margin: int | None = None,
+        right_margin: int | None = None,
+        gap_before: int | None = None,
+        gap_after: int | None = None,
+        first_indent: int | None = None,
+        has_drop_cap: int | None = None,
+        drop_cap_lines: int | None = None,
+        drop_cap_offset: int | None = None,
+        char_style: TextStyle | None = None,
+    ): ...
     def setup(self) -> None: ...
     def apply(self, apply_obj) -> None: ...
 
@@ -73,6 +96,14 @@ WEEK_CAL_TASK_STYLE: Incomplete
 MONTH_DATE_PSTYLE: Incomplete
 GUTTER_HEADER_STYLE: Incomplete
 
-def fill_lined_basic(x, y, width, height, draw_master: bool, line_height: int = 13, line_style: LineStyle = ...): ...
+def fill_lined_basic(
+    x,
+    y,
+    width,
+    height,
+    draw_master: bool,
+    line_height: int = 13,
+    line_style: LineStyle = ...,
+): ...
 
 FILLERS: Incomplete

@@ -1,5 +1,6 @@
 from types import CapsuleType
 from typing import Any, Self, SupportsIndex, override
+from warnings import deprecated
 
 # =======
 # ints
@@ -33,6 +34,14 @@ NOFACINGPAGES: int
 FACINGPAGES: int
 FIRSTPAGELEFT: int
 FIRSTPAGERIGHT: int
+
+PAGE_1: int
+PAGE_2: int
+PAGE_3: int
+PAGE_4: int
+
+PORTRAIT: int
+LANDSCAPE: int
 
 JOIN_BEVEL: int
 JOIN_ROUND: int
@@ -137,7 +146,7 @@ class PDFfile:
     # effval: <class 'getset_descriptor'>
     # embedPDF: <class 'member_descriptor'>
     # encrypt: <class 'member_descriptor'>
-    # file: <class 'getset_descriptor'>
+    file: str
     # fitWindow: <class 'member_descriptor'>
     # fontEmbedding: <class 'getset_descriptor'>
     # fonts: <class 'getset_descriptor'>
@@ -167,7 +176,7 @@ class PDFfile:
     # registrationMarks: <class 'member_descriptor'>
     # resolution: <class 'getset_descriptor'>
     # rotateDeg: <class 'getset_descriptor'>
-    def save(self): ...
+    def save(self) -> None: ...
     # solidpr: <class 'getset_descriptor'>
     # subsetList: <class 'getset_descriptor'>
     # thumbnails: <class 'member_descriptor'>
@@ -298,6 +307,7 @@ def closeDoc() -> ...: ...  # TODO need to fill in return
 def docChanged() -> ...: ...  # TODO need to fill in return
 def docUnitToPoints() -> ...: ...  # TODO need to fill in return
 def haveDoc() -> int: ...
+@deprecated("Use NewDocument instead")
 def newDoc(
     size: tuple[float, float],
     margins: tuple[float, float, float, float],
@@ -334,7 +344,57 @@ May raise ScribusError if is firstPageOrder bigger than allowed by pagesType.
 """
 
 def newDocDialog() -> ...: ...  # TODO need to fill in return
-def newDocument() -> ...: ...  # TODO need to fill in return
+def newDocument(
+    size: tuple[float, float],
+    margins: tuple[float, float, float, float],
+    orientation: int,
+    firstPageNumber: int,
+    unit: int,
+    pagesType: int,
+    firstPageOrder: int,
+    numPages: int,
+) -> bool: ...
+
+newDocument.__doc__ = """newDocument(...)
+    newDocument(
+        size, margins, orientation, firstPageNumber,
+        unit, pagesType, firstPageOrder, numPages) -> bool
+
+    Creates a new document and returns true if successful. The parameters have the following meaning:
+        size = A tuple (width, height) describing the size of the document. You
+            can use predefined constants named PAPER_<paper_type> e.g. PAPER_A4 etc.
+        margins = A tuple (left, right, top, bottom) describing the document margins
+        orientation = the page orientation - constants PORTRAIT, LANDSCAPE
+        firstPageNumer = is the number of the first page in the document used 
+            for pagenumbering. While you'll usually want 1, it's useful to have
+            higher numbers if you're creating a document in several parts.
+        unit: this value sets the measurement units used by the document. Use a
+            predefined constant for this, one of: UNIT_INCHES, UNIT_MILLIMETERS,
+            UNIT_PICAS, UNIT_POINTS.
+        pagesType = One of the predefined constants PAGE_n. 
+            PAGE_1 is single page, 
+            PAGE_2 is for facing pages documents, 
+            PAGE_3 is for 3 pages fold
+            PAGE_4 is 4-fold.
+        firstPageOrder = What is position of first page in the document. 
+            Indexed from 0 (0 = first).
+        numPage = Number of pages to be created.
+
+    The values for width, height and the margins are expressed in the given 
+    unit for the document. PAPER_* constants are expressed in points. If your 
+    document is not in points, make sure to account for this. Use UNIT_MM if 
+    you use PAPER_A*_MM or PAPER_B*_MM constants. PAPER_A0_MM through 
+    PAPER_A9_MM and PAPER_B0_MM through PAPER_B10_MM are available.
+
+    example: 
+    ```
+    newDocument(PAPER_A4, (10, 10, 20, 20), LANDSCAPE, 7, UNIT_POINTS, PAGE_4, 3, 1)
+    ```
+
+    May raise ScribusError if is firstPageOrder bigger than allowed by pagesType.
+
+"""
+
 def openDoc(name: str) -> ...: ...  # TODO need to fill in return
 
 # =======

@@ -2,6 +2,7 @@ import types
 from _typeshed import Incomplete
 from collections.abc import Generator
 from contextlib import contextmanager
+from typing import NamedTuple
 
 MISSING: Incomplete
 
@@ -62,5 +63,15 @@ class _OkToIgnoreDialog:
     ignore_words: Incomplete
     def __init__(self, ignore_words=...) -> None: ...
     def __call__(self, title: str, message: str) -> str | object: ...
+
+class CopySrc(NamedTuple):
+    filename: str
+    page: int
+
+class CopyDest(NamedTuple):
+    filename: str
+    page: int
+
+def copy_items(source: CopySrc, dest: CopyDest, offset=None): ...
 
 ok_to_ignore_dialog: Incomplete

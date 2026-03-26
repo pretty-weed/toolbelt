@@ -7,9 +7,10 @@ from dandiscribe.exceptions import (
 )
 from dandy_lib.datatypes.tuples import MixableNamedTuple
 from dandy_lib.datatypes.twodee import Size
-from dataclasses import dataclass, field
+from dataclasses import asdict as asdict, dataclass, field
 from functools import lru_cache
-from typing import ClassVar, NamedTuple, TypeVar
+from os import linesep as linesep
+from typing import ClassVar, NamedTuple, Self, TypeVar
 
 PAPER_LETTER: Size
 PAPER_A4: Size
@@ -31,13 +32,14 @@ class Page(MixableNamedTuple):
         traceback: types.TracebackType | None,
     ) -> None: ...
     def make(self) -> None: ...
-    def draw(self, master: str | None = None) -> None: ...
+    def draw(self, bake_master: bool = False) -> None: ...
 
 class MasterPage(MixableNamedTuple, Page):
     page_number: ClassVar[None]
     is_master: ClassVar[bool]
     @property
     def name(self) -> str: ...
+    def draw(self) -> None: ...
 
 class SpreadPage(MixableNamedTuple, Page):
     inside_margin: int
@@ -53,17 +55,20 @@ class Sheet(NamedTuple):
 
 Doc = TypeVar("Doc", bound="Document")
 
+def get_mpage_sizes() -> dict[str, Size]: ...
 @dataclass
 class Document:
     pages: list[Page] = field(default_factory=list)
     masterpages: dict[str, MasterPage] = field(default_factory=dict)
+    @classmethod
+    def from_current(cls) -> Self: ...
     @classmethod
     def create(
         cls,
         page_count: int,
         page_size: Size,
         create_masters: bool = True,
-        masters_begin: int = 0,
+        masters_begin: int = 2,
     ) -> Doc: ...
     def make(self) -> None: ...
     def draw(self, *draw_args, **draw_kwargs) -> None: ...

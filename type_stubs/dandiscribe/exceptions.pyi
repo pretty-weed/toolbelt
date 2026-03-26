@@ -1,2 +1,9 @@
+from _typeshed import Incomplete
+
 class NewDocError(Exception): ...
 class InvalidSheet(Exception): ...
+
+class NoObjects(Exception):
+    doc: Incomplete
+    page: Incomplete
+    def __init__(self, document: str, page: int) -> None: ...

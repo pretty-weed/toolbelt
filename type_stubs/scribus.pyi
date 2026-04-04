@@ -1,5 +1,6 @@
 from types import CapsuleType
-from typing import Any, Self, SupportsIndex, override
+from typing import Any, Callable, Self, SupportsIndex, override
+from warnings import deprecated
 
 # =======
 # ints
@@ -34,6 +35,14 @@ FACINGPAGES: int
 FIRSTPAGELEFT: int
 FIRSTPAGERIGHT: int
 
+PAGE_1: int
+PAGE_2: int
+PAGE_3: int
+PAGE_4: int
+
+PORTRAIT: int
+LANDSCAPE: int
+
 JOIN_BEVEL: int
 JOIN_ROUND: int
 LUMINOSITY: int
@@ -45,6 +54,16 @@ UNIT_INCHES: int
 UNIT_MM: int
 UNIT_PICAS: int
 UNIT_PT: int
+
+ALIGN_LEFT: int
+ALIGN_RIGHT: int
+ALIGN_FORCED: int
+ALIGN_CENTERED: int
+ALIGN_BLOCK: int
+
+ALIGNV_TOP: int  # 0
+ALIGNV_CENTERED: int  # 1
+ALIGNV_BOTTOM: int  # 2
 # =======
 # types
 # =======
@@ -78,7 +97,9 @@ class ImageExport:
     @override
     def __reduce__(self) -> tuple[Any, ...]: ...
     @override
-    def __reduce_ex__(self, protocol: SupportsIndex) -> tuple[Any, ...]: ... # TODO this could be more explicit return
+    def __reduce_ex__(
+        self, protocol: SupportsIndex
+    ) -> tuple[Any, ...]: ...  # TODO this could be more explicit return
     @override
     def __setattr__(self, name: str, value: Any) -> None: ...
     @override
@@ -97,6 +118,7 @@ class NameExistsError(Exception): ...
 class NoDocOpenError(Exception): ...
 class NoValidObjectError(Exception): ...
 class NotFoundError(Exception): ...
+
 class PDFfile:
     def __init__(self, *args: Any, **kwargs: Any) -> None: ...
     __doc__: str
@@ -134,7 +156,7 @@ class PDFfile:
     # effval: <class 'getset_descriptor'>
     # embedPDF: <class 'member_descriptor'>
     # encrypt: <class 'member_descriptor'>
-    # file: <class 'getset_descriptor'>
+    file: str
     # fitWindow: <class 'member_descriptor'>
     # fontEmbedding: <class 'getset_descriptor'>
     # fonts: <class 'getset_descriptor'>
@@ -164,7 +186,7 @@ class PDFfile:
     # registrationMarks: <class 'member_descriptor'>
     # resolution: <class 'getset_descriptor'>
     # rotateDeg: <class 'getset_descriptor'>
-    def save(self): ...
+    def save(self) -> None: ...
     # solidpr: <class 'getset_descriptor'>
     # subsetList: <class 'getset_descriptor'>
     # thumbnails: <class 'member_descriptor'>
@@ -174,6 +196,7 @@ class PDFfile:
     # user: <class 'getset_descriptor'>
     # usespot: <class 'member_descriptor'>
     # version: <class 'member_descriptor'>
+
 class Printer:
     def __init__(self, *args: Any, **kwargs: Any) -> None: ...
     def __dir__(self) -> list[str]: ...
@@ -186,16 +209,17 @@ class Printer:
     def __getstate__(self) -> dict[str, Any]: ...
     def __gt__(self: Self, value: Any) -> bool: ...
     def __hash__(self): ...
-    def __init__(self, *args: Any, **kwargs: Any): ...
     def __init_subclass__(cls) -> None: ...
     def __le__(self: Self, value: Any) -> bool: ...
     def __lt__(self: Self, value: Any) -> bool: ...
     @override
     def __ne__(self: Self, value: Any) -> bool: ...
-    def __new__(cls: object, *args: Any, **kwargs: Any) -> object: ...
+    def __new__(cls, *args: Any, **kwargs: Any) -> Self: ...
     @override
     def __reduce__(self) -> tuple[Any, ...]: ...
-    def __reduce_ex__(self, protocol: SupportsIndex) -> tuple[Any, ...]: ... # TODO this could be more explicit return
+    def __reduce_ex__(
+        self, protocol: SupportsIndex
+    ) -> tuple[Any, ...]: ...  # TODO this could be more explicit return
     def __setattr__(self, name, value): ...
     def __sizeof__(self): ...
     # allPrinters: <class 'getset_descriptor'>
@@ -213,6 +237,7 @@ class Printer:
     # separation: <class 'getset_descriptor'>
     # ucr: <class 'member_descriptor'>
     # useICC: <class 'member_descriptor'>
+
 class ScribusException(Exception): ...
 class WrongFrameTypeError(Exception): ...
 
@@ -287,12 +312,22 @@ _i_str: str
 # # Document
 # =======
 
-def closeDoc() -> ...: ...  # TODO need to fill in return
-def docChanged() -> ...: ...  # TODO need to fill in return
-def docUnitToPoints() -> ...: ...  # TODO need to fill in return
-def haveDoc() -> int : ... 
+def closeDoc() -> None: ...
+def docChanged(changed: bool) -> None: ...
+def docUnitToPoints(value: float) -> float: ...
+def haveDoc() -> int: ...
+@deprecated("Use NewDocument instead")
+def newDoc(
+    size: tuple[float, float],
+    margins: tuple[float, float, float, float],
+    orientation: int,
+    firstPageNumber: int,
+    unit: int,
+    pagesType: int,
+    firstPageOrder: int,
+    numPages: int,
+) -> bool: ...
 
-def newDoc(size: tuple[float, float], margins: tuple[float, float, float, float], orientation: int, firstPageNumber: int, unit: int, pagesType: int, firstPageOrder: int, numPages: int) -> bool: ...
 newDoc.__doc__ = """
 Creates a new document and returns true if successful. The parameters have the following meaning:
 
@@ -314,18 +349,72 @@ The values for width, height and the margins are expressed in the given unit for
 
 example: newDocument(PAPER_A4, (10, 10, 20, 20), LANDSCAPE, 7, UNIT_POINTS, PAGE_4, 3, 1)
 
-May raise ScribusError if is firstPageOrder bigger than allowed by pagesType. 
+May raise ScribusError if is firstPageOrder bigger than allowed by pagesType.
 """
-def newDocDialog() -> ...: ...  # TODO need to fill in return
-def newDocument() -> ...: ...  # TODO need to fill in return
+
+def newDocDialog() -> bool: ...  # TODO need to fill in return
+def newDocument(
+    size: tuple[float, float],
+    margins: tuple[float, float, float, float],
+    orientation: int,
+    firstPageNumber: int,
+    unit: int,
+    pagesType: int,
+    firstPageOrder: int,
+    numPages: int,
+) -> bool: ...
+
+newDocument.__doc__ = """newDocument(...)
+    newDocument(
+        size, margins, orientation, firstPageNumber,
+        unit, pagesType, firstPageOrder, numPages) -> bool
+
+    Creates a new document and returns true if successful. The parameters have the following meaning:
+        size = A tuple (width, height) describing the size of the document. You
+            can use predefined constants named PAPER_<paper_type> e.g. PAPER_A4 etc.
+        margins = A tuple (left, right, top, bottom) describing the document margins
+        orientation = the page orientation - constants PORTRAIT, LANDSCAPE
+        firstPageNumer = is the number of the first page in the document used
+            for pagenumbering. While you'll usually want 1, it's useful to have
+            higher numbers if you're creating a document in several parts.
+        unit: this value sets the measurement units used by the document. Use a
+            predefined constant for this, one of: UNIT_INCHES, UNIT_MILLIMETERS,
+            UNIT_PICAS, UNIT_POINTS.
+        pagesType = One of the predefined constants PAGE_n.
+            PAGE_1 is single page,
+            PAGE_2 is for facing pages documents,
+            PAGE_3 is for 3 pages fold
+            PAGE_4 is 4-fold.
+        firstPageOrder = What is position of first page in the document.
+            Indexed from 0 (0 = first).
+        numPage = Number of pages to be created.
+
+    The values for width, height and the margins are expressed in the given
+    unit for the document. PAPER_* constants are expressed in points. If your
+    document is not in points, make sure to account for this. Use UNIT_MM if
+    you use PAPER_A*_MM or PAPER_B*_MM constants. PAPER_A0_MM through
+    PAPER_A9_MM and PAPER_B0_MM through PAPER_B10_MM are available.
+
+    example:
+    ```
+    newDocument(PAPER_A4, (10, 10, 20, 20), LANDSCAPE, 7, UNIT_POINTS, PAGE_4, 3, 1)
+    ```
+
+    May raise ScribusError if is firstPageOrder bigger than allowed by pagesType.
+
+"""
+
+def openDoc(name: str) -> None: ...  # TODO need to fill in return
 
 # =======
 # # Pages
 # =======
 
-def currentPageNumber() -> int: ... 
+def currentPage() -> int: ...
+def currentPageNumber() -> int: ...
+def getPageItems() -> list[tuple[str, int, int]]: ...
 
-def getPageItems() -> list[str]: ...
+# getPageItems tuple: name, item type, order
 def getPageMargins() -> tuple[float, float, float, float]: ...
 def getPageNMargins() -> tuple[float, float, float, float]: ...
 def getPageSize() -> tuple[float, float]: ...
@@ -337,416 +426,471 @@ def getPageType() -> int: ...  # TODO constrain int return
 # =======
 
 def applyMasterPage(masterPageName: str, pageNumber: int) -> None: ...
-def closeMasterPage() -> ...: ...  # TODO need to fill in return
-def createMasterPage(pageName: str) -> None: ...  
-def getMasterPage(pageNr: int) -> str : ... 
+def closeMasterPage() -> None: ...  # TODO need to fill in return
+def createMasterPage(pageName: str) -> None: ...
+def getMasterPage(pageNr: int) -> str: ...
 
 # =======
 # Layers
 # =======
 
-def createLayer() -> ...: ...  # TODO need to fill in return
-def deleteLayer() -> ...: ...  # TODO need to fill in return
-def getActiveLayer() -> ...: ...  # TODO need to fill in return
-def getLayerBlendmode() -> ...: ...  # TODO need to fill in return
-def getLayerTransparency() -> ...: ...  # TODO need to fill in return
-def getLayers() -> ...: ...  # TODO need to fill in returns
-
-
-def isLayerFlow() -> ...: ...  # TODO need to fill in return
-def isLayerLocked() -> ...: ...  # TODO need to fill in return
-def isLayerOutlined() -> ...: ...  # TODO need to fill in return
-def isLayerPrintable() -> ...: ...  # TODO need to fill in return
-def isLayerVisible() -> ...: ...  # TODO need to fill in return
-
-def raiseActiveLayer() -> ...: ...  # TODO need to fill in return
-
-def setLayerBlendmode() -> ...: ...  # TODO need to fill in return
-def setLayerFlow() -> ...: ...  # TODO need to fill in return
-def setLayerLocked() -> ...: ...  # TODO need to fill in return
-def setLayerOutlined() -> ...: ...  # TODO need to fill in return
-def setLayerPrintable() -> ...: ...  # TODO need to fill in return
-def setLayerTransparency() -> ...: ...  # TODO need to fill in return
-def setLayerVisible() -> ...: ...  # TODO need to fill in return
-def sentToLayer() -> ...: ...  # TODO need to fill in return
-def setActiveLayer() -> ...: ...  # TODO need to fill in return
+def createLayer(name: str) -> None: ...
+def deleteLayer(name: str) -> None: ...
+def getActiveLayer() -> str: ...
+def getLayerBlendmode(layer: str) -> int: ...
+def getLayerTransparency(layer: str) -> float: ...
+def getLayers() -> list[str]: ...
+def isLayerFlow(layer: str) -> bool: ...
+def isLayerLocked(layer: str) -> bool: ...
+def isLayerOutlined(layer: str) -> bool: ...
+def isLayerPrintable(layer: str) -> bool: ...
+def isLayerVisible(layer: str) -> bool: ...
+def raiseActiveLayer() -> None: ...
+def setLayerBlendmode(layer: str, blend: int) -> None: ...
+def setLayerFlow(layer: str, flow: bool) -> None: ...
+def setLayerLocked(layer: str, locked: bool) -> None: ...
+def setLayerOutlined(layer: str, outlined: bool) -> None: ...
+def setLayerPrintable(layer: str, printable: bool) -> None: ...
+def setLayerTransparency(layer: str, trans: float) -> None: ...
+def setLayerVisible(layer: str, visible: bool) -> None: ...
+def sendToLayer(layer: str, name: str = "") -> None: ...
+@deprecated("sentToLayer is deprecated, please use sendToLayer")
+def sentToLayer(layer: str, name: str = "") -> None: ...
+def setActiveLayer(layer: str) -> None: ...
 
 # =======
 # Frame Properties
 # =======
 
-
-def setLineCap() -> ...: ...  # TODO need to fill in return
-def setLineColor() -> ...: ...  # TODO need to fill in return
-def setLineJoin() -> ...: ...  # TODO need to fill in return
-def setLineShade() -> ...: ...  # TODO need to fill in return
-def setLineSpacing() -> ...: ...  # TODO need to fill in return
-def setLineSpacingMode() -> ...: ...  # TODO need to fill in return
-def setLineStyle() -> ...: ...  # TODO need to fill in return
-def setLineTransparency() -> ...: ...  # TODO need to fill in return
-def setLineWidth() -> ...: ...  # TODO need to fill in return
+def setLineCap() -> Any: ...  # TODO fill in return
+def setLineColor() -> Any: ...  # TODO fill in return
+def setLineJoin() -> Any: ...  # TODO fill in return
+def setLineShade() -> Any: ...  # TODO fill in return
+def setLineSpacing() -> Any: ...  # TODO fill in return
+def setLineSpacingMode() -> Any: ...  # TODO fill in return
+def setLineStyle() -> Any: ...  # TODO fill in return
+def setLineTransparency() -> Any: ...  # TODO fill in return
+def setLineWidth() -> Any: ...  # TODO fill in return
 
 # =======
 # # Item
 # =======
 
-def copyObject() -> ...: ...  # TODO need to fill in return
-def copyObjects(objects: list[str]) -> ...: ...  # TODO need to fill in return
-def createTable() -> ...: ...  # TODO need to fill in return
-def createText() -> ...: ...  # TODO need to fill in return
-
-def createImage() -> ...: ...  # TODO need to fill in return
-
-
-def moveSelectionToBack() -> ...: ...  # TODO need to fill in return
-def moveSelectionToFront() -> ...: ...  # TODO need to fill in return
-
-
-def pasteObject() -> str: ... 
+def copyObject(object: str | None = None) -> None: ...
+def copyObjects(objects: list[str] | None = None) -> None: ...
+def createTable(
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    numRows: int,
+    numColumns: int,
+    name: str = "",
+) -> str: ...
+def createText(
+    x: float, y: float, width: float, height: float, name: str = ""
+) -> str: ...
+def createImage(
+    x: float, y: float, width: float, height: float, name: str = ""
+) -> str: ...
+def moveSelectionToBack() -> None: ...
+def moveSelectionToFront() -> None: ...
+def pasteObject() -> str: ...
 def pasteObjects() -> list[str]: ...
-
-def selectObject() -> ...: ...  # TODO need to fill in return
-
-def moveObject() -> ...: ...  # TODO need to fill in return
-def moveObjectAbs(x: float, y: float, name: str = "") -> None: ... 
+def selectObject() -> Any: ...  # TODO fill in return
+def moveObject(
+    dx: float, dy: float, name: str = ""
+) -> Any: ...  # TODO fill in return
+def moveObjectAbs(x: float, y: float, name: str = "") -> None: ...
 
 # =======
 # # Lines
 # =======
 
-def createBezierLine() -> ...: ...  # TODO need to fill in return
-def createLine() -> ...: ...  # TODO need to fill in return
-def createPolyLine(points: list[float | int], name: str | None = None) -> str: ...  # TODO constraint len list to %2
-def getLineStyle() -> ...: ...  # TODO need to fill in return
+def createBezierLine() -> Any: ...  # TODO fill in return
+def createLine() -> Any: ...  # TODO fill in return
+def createPolyLine(
+    points: list[float | int], name: str | None = None
+) -> str: ...  # TODO constraint len list to %2
+def getLineStyle() -> Any: ...  # TODO fill in return
 
 # =======
 # # Shapes
 # =======
 
-def combinePolygons() -> ...: ...  # TODO need to fill in return
-def createEllipse() -> ...: ...  # TODO need to fill in return
-def createPolygon(points: list[float | int], name: str | None = None) -> str: ...
-def createRect(x: float | int, y: float | int, width: float | int, height: float | int, name: str | None) -> str: ...
+def combinePolygons() -> Any: ...  # TODO fill in return
+def createEllipse() -> Any: ...  # TODO fill in return
+def createPolygon(
+    points: list[float | int], name: str | None = None
+) -> str: ...
+def createRect(
+    x: float | int,
+    y: float | int,
+    width: float | int,
+    height: float | int,
+    name: str | None,
+) -> str: ...
 
 # =======
 # Tables
 # =======
 
-def getTableColumnWidth() -> ...: ...  # TODO need to fill in return
-def getTableColumns() -> ...: ...  # TODO need to fill in return
-def getTableFillColor() -> ...: ...  # TODO need to fill in return
-def getTableRowHeight() -> ...: ...  # TODO need to fill in return
-def getTableRows() -> ...: ...  # TODO need to fill in return
-def getTableStyle() -> ...: ...  # TODO need to fill in return
-
-
-def setTableBottomBorder() -> ...: ...  # TODO need to fill in return
-def setTableFillColor() -> ...: ...  # TODO need to fill in return
-def setTableLeftBorder() -> ...: ...  # TODO need to fill in return
-def setTableRightBorder() -> ...: ...  # TODO need to fill in return
-def setTableStyle() -> ...: ...  # TODO need to fill in return
-def setTableTopBorder() -> ...: ...  # TODO need to fill in return
+def getTableColumnWidth() -> Any: ...  # TODO fill in return
+def getTableColumns() -> Any: ...  # TODO fill in return
+def getTableFillColor() -> Any: ...  # TODO fill in return
+def getTableRowHeight() -> Any: ...  # TODO fill in return
+def getTableRows() -> Any: ...  # TODO fill in return
+def getTableStyle() -> Any: ...  # TODO fill in return
+def setTableBottomBorder() -> Any: ...  # TODO fill in return
+def setTableFillColor() -> Any: ...  # TODO fill in return
+def setTableLeftBorder() -> Any: ...  # TODO fill in return
+def setTableRightBorder() -> Any: ...  # TODO fill in return
+def setTableStyle() -> Any: ...  # TODO fill in return
+def setTableTopBorder() -> Any: ...  # TODO fill in return
 
 # =======
 # ## Cell
 # =======
 
-def getCellColumnSpan() -> ...: ...  # TODO need to fill in return
-def getCellFillColor() -> ...: ...  # TODO need to fill in return
-def getCellRowSpan() -> ...: ...  # TODO need to fill in return
-def getCellStyle() -> ...: ...  # TODO need to fill in return
-def getCellText() -> ...: ...  # TODO need to fill in return
-
-def setCellBottomBorder() -> ...: ...  # TODO need to fill in return
-def setCellBottomPadding() -> ...: ...  # TODO need to fill in return
-def setCellFillColor() -> ...: ...  # TODO need to fill in return
-def setCellLeftBorder() -> ...: ...  # TODO need to fill in return
-def setCellLeftPadding() -> ...: ...  # TODO need to fill in return
-def setCellRightBorder() -> ...: ...  # TODO need to fill in return
-def setCellRightPadding() -> ...: ...  # TODO need to fill in return
-def setCellStyle() -> ...: ...  # TODO need to fill in return
-def setCellText() -> ...: ...  # TODO need to fill in return
-def setCellTopBorder() -> ...: ...  # TODO need to fill in return
-def setCellTopPadding() -> ...: ...  # TODO need to fill in return
+def getCellColumnSpan() -> Any: ...  # TODO fill in return
+def getCellFillColor() -> Any: ...  # TODO fill in return
+def getCellRowSpan() -> Any: ...  # TODO fill in return
+def getCellStyle() -> Any: ...  # TODO fill in return
+def getCellText() -> Any: ...  # TODO fill in return
+def setCellBottomBorder() -> Any: ...  # TODO fill in return
+def setCellBottomPadding() -> Any: ...  # TODO fill in return
+def setCellFillColor() -> Any: ...  # TODO fill in return
+def setCellLeftBorder() -> Any: ...  # TODO fill in return
+def setCellLeftPadding() -> Any: ...  # TODO fill in return
+def setCellRightBorder() -> Any: ...  # TODO fill in return
+def setCellRightPadding() -> Any: ...  # TODO fill in return
+def setCellStyle() -> Any: ...  # TODO fill in return
+def setCellText() -> Any: ...  # TODO fill in return
+def setCellTopBorder() -> Any: ...  # TODO fill in return
+def setCellTopPadding() -> Any: ...  # TODO fill in return
 
 # =======
 # # Style
 # =======
 
-def createCharStyle(name: str, font: str="", fontsize: float=float(), features: str="", fillcolor: str="", fillshade: str="", strokecolor: str="", strokeshade: str="", baselineoffset: float=0.0, shadowxoffset: float=0.0, shadowyoffset: float=0.0, outlinewidth: float=0.0, underlineoffset: float=0.0, underlinewidth: float=0.0, striketruoffset: float=0.0, strikethruwidth: float=0.0, scaleh: float=1.0, scalev: float=1.0, tracking: float=0.0, language: str="") -> ...: ...  # TODO need to fill in return
-def createCustomLineStyle() -> ...: ...  # TODO need to fill in return
-def createParagraphStyle(name: str, linespacingmode: int=1, linespacing: float=0.0, alignment: int=0, leftmargin: float=0.0, rightmargin: float=0.0, gapbefore: float=0.0, gapafter: float=0.0, firstindent: float=0.0, hasdropcap: int=0, dropcaplines: int=0, dropcapoffset: int=0, charstyle: str="", bullet: str="", tabs: list[tuple[float] | tuple[float, int] | tuple[float, int, str]]=[]) -> ...: ...  # TODO need to fill in return
-
-
-def getLineStyles() -> ...: ...  # TODO need to fill in return
+def createCharStyle(
+    name: str,
+    font: str = "",
+    fontsize: float = float(),
+    features: str = "",
+    fillcolor: str = "",
+    fillshade: str = "",
+    strokecolor: str = "",
+    strokeshade: str = "",
+    baselineoffset: float = 0.0,
+    shadowxoffset: float = 0.0,
+    shadowyoffset: float = 0.0,
+    outlinewidth: float = 0.0,
+    underlineoffset: float = 0.0,
+    underlinewidth: float = 0.0,
+    striketruoffset: float = 0.0,
+    strikethruwidth: float = 0.0,
+    scaleh: float = 1.0,
+    scalev: float = 1.0,
+    tracking: float = 0.0,
+    language: str = "",
+) -> ...: ...  # TODO need to fill in return
+def createCustomLineStyle() -> Any: ...  # TODO fill in return
+def createParagraphStyle(
+    name: str,
+    linespacingmode: int = 1,
+    linespacing: float = 0.0,
+    alignment: int = 0,
+    leftmargin: float = 0.0,
+    rightmargin: float = 0.0,
+    gapbefore: float = 0.0,
+    gapafter: float = 0.0,
+    firstindent: float = 0.0,
+    hasdropcap: int = 0,
+    dropcaplines: int = 0,
+    dropcapoffset: int = 0,
+    charstyle: str = "",
+    bullet: str = "",
+    tabs: list[tuple[float] | tuple[float, int] | tuple[float, int, str]] = [],
+) -> ...: ...  # TODO need to fill in return
+def getLineStyles() -> Any: ...  # TODO fill in return
 def getParagraphStyles() -> list[str]: ...  # TODO need to fill in return
-def getCellStyles() -> ...: ...  # TODO need to fill in return
-def getTableStyles() -> ...: ...  # TODO need to fill in return
+def getCellStyles() -> Any: ...  # TODO fill in return
+def getTableStyles() -> Any: ...  # TODO fill in return
+
 # =======
 # Color
 # =======
 
-
 def changeColor(name: str, c: int, m: int, y: int, k: int) -> None: ...
-def changeColorCMYK(name: str, c: int, m: int, y: int, k: int) -> None: ... 
-def changeColorCMYKFloat(name: str, c: float, m: float, y: float, k: float) -> None: ...
-def changeColorLab(name: str, l: int, a: int, b: int) -> None: ...  
-def changeColorRGB(name: str, r: int, g: int, b: int) -> None: ...  
+def changeColorCMYK(name: str, c: int, m: int, y: int, k: int) -> None: ...
+def changeColorCMYKFloat(
+    name: str, c: float, m: float, y: float, k: float
+) -> None: ...
+def changeColorLab(name: str, l: int, a: int, b: int) -> None: ...
+def changeColorRGB(name: str, r: int, g: int, b: int) -> None: ...
 def changeColorRGBFloat(name: str, r: float, g: float, b: float) -> None: ...
-
-def defineColor() -> ...: ...  # TODO need to fill in return
-def defineColorCMYK() -> ...: ...  # TODO need to fill in return
-def defineColorCMYKFloat() -> ...: ...  # TODO need to fill in return
-def defineColorLab() -> ...: ...  # TODO need to fill in return
-def defineColorRGBFloat() -> ...: ...  # TODO need to fill in return
-
-def getColor() -> ...: ...  # TODO need to fill in return
-def getColorAsRGB() -> ...: ...  # TODO need to fill in return
-def getColorAsRGBFloat() -> ...: ...  # TODO need to fill in return
-def getColorFloat() -> ...: ...  # TODO need to fill in return
-def getColorNames() -> ...: ...  # TODO need to fill in return
+def defineColor() -> Any: ...  # TODO fill in return
+def defineColorCMYK() -> Any: ...  # TODO fill in return
+def defineColorCMYKFloat() -> Any: ...  # TODO fill in return
+def defineColorLab() -> Any: ...  # TODO fill in return
+def defineColorRGBFloat() -> Any: ...  # TODO fill in return
+def getColor() -> Any: ...  # TODO fill in return
+def getColorAsRGB() -> Any: ...  # TODO fill in return
+def getColorAsRGBFloat() -> Any: ...  # TODO fill in return
+def getColorFloat() -> Any: ...  # TODO fill in return
+def getColorNames() -> Any: ...  # TODO fill in return
 
 # =======
 # # Misc
 # =======
-def createPathText() -> ...: ...  # TODO need to fill in return
-def createPdfAnnotation() -> ...: ...  # TODO need to fill in return
-def currentPageNumberForSection() -> ...: ...  # TODO need to fill in return
-def dehyphenateText() -> ...: ...  # TODO need to fill in return
-def deleteColor() -> ...: ...  # TODO need to fill in return
-def deleteMasterPage() -> ...: ...  # TODO need to fill in return
-def deleteObject() -> ...: ...  # TODO need to fill in return
-def deletePage() -> ...: ...  # TODO need to fill in return
-def deleteText() -> ...: ...  # TODO need to fill in return
-def deselectAll() -> ...: ...  # TODO need to fill in return
-def duplicateObject() -> ...: ...  # TODO need to fill in return
-def duplicateObjects() -> ...: ...  # TODO need to fill in return
+def createPathText() -> Any: ...  # TODO fill in return
+def createPdfAnnotation() -> Any: ...  # TODO fill in return
+def currentPageNumberForSection() -> Any: ...  # TODO fill in return
+def dehyphenateText() -> Any: ...  # TODO fill in return
+def deleteColor() -> Any: ...  # TODO fill in return
+def deleteMasterPage() -> Any: ...  # TODO fill in return
+def deleteObject() -> Any: ...  # TODO fill in return
+def deletePage() -> Any: ...  # TODO fill in return
+def deleteText() -> Any: ...  # TODO fill in return
+def deselectAll() -> Any: ...  # TODO fill in return
+def duplicateObject() -> Any: ...  # TODO fill in return
+def duplicateObjects() -> Any: ...  # TODO fill in return
 def editMasterPage(pageName: str) -> None: ...  # TODO need to fill in return
-def fileDialog() -> ...: ...  # TODO need to fill in return
-def fileQuit() -> ...: ...  # TODO need to fill in return
-def flipObject() -> ...: ...  # TODO need to fill in return
+def fileDialog() -> Any: ...  # TODO fill in return
+def fileQuit() -> Any: ...  # TODO fill in return
+def flipObject() -> Any: ...  # TODO fill in return
 
 # -1 is not a correct default for page, but I'm not sure I can replicate this
 # well
-def getAllObjects(type: int = -1, page: int = -1, layer: str = "") -> list[str]: ...
-def getAllText() -> ...: ...  # TODO need to fill in return
-def getBaseLine() -> ...: ...  # TODO need to fill in return
-def getBleeds() -> ...: ...  # TODO need to fill in return
-def getBoundingBox() -> ...: ...  # TODO need to fill in return
-def getCharStyles() -> ...: ...  # TODO need to fill in return
-def getCharacterStyle() -> ...: ...  # TODO need to fill in return
-def getColumnGap() -> ...: ...  # TODO need to fill in return
-def getColumnGuides() -> ...: ...  # TODO need to fill in return
-def getColumns() -> ...: ...  # TODO need to fill in return
-def getCornerRadius() -> ...: ...  # TODO need to fill in return
-def getCurrentPageSize() -> ...: ...  # TODO need to fill in return
-def getCustomLineStyle() -> ...: ...  # TODO need to fill in return
+def getAllObjects(
+    type: int = -1, page: int = -1, layer: str = ""
+) -> list[str]: ...
+def getAllText() -> Any: ...  # TODO fill in return
+def getBaseLine() -> Any: ...  # TODO fill in return
+def getBleeds() -> Any: ...  # TODO fill in return
+def getBoundingBox() -> Any: ...  # TODO fill in return
+def getCharStyles() -> Any: ...  # TODO fill in return
+def getCharacterStyle() -> Any: ...  # TODO fill in return
+def getColumnGap() -> Any: ...  # TODO fill in return
+def getColumnGuides() -> Any: ...  # TODO fill in return
+def getColumns() -> Any: ...  # TODO fill in return
+def getCornerRadius() -> Any: ...  # TODO fill in return
+def getCurrentPageSize() -> Any: ...  # TODO fill in return
+def getCustomLineStyle() -> Any: ...  # TODO fill in return
 def getDocName() -> str: ...
-def getFillBlendmode() -> ...: ...  # TODO need to fill in return
-def getFillColor() -> ...: ...  # TODO need to fill in return
-def getFillShade() -> ...: ...  # TODO need to fill in return
-def getFillTransparency() -> ...: ...  # TODO need to fill in return
-def getFirstLineOffset() -> ...: ...  # TODO need to fill in return
-def getFirstLinkedFrame() -> ...: ...  # TODO need to fill in return
-def getFont() -> ...: ...  # TODO need to fill in return
-def getFontFeatures() -> ...: ...  # TODO need to fill in return
-def getFontNames() -> ...: ...  # TODO need to fill in return
-def getFontSize() -> ...: ...  # TODO need to fill in return
-def getFrameSelectedTextRange() -> ...: ...  # TODO need to fill in return
-def getText() -> ...: ...  # TODO need to fill in return
-def getGradientStop() -> ...: ...  # TODO need to fill in return
-def getGradientStopsCount() -> ...: ...  # TODO need to fill in return
-def getGradientVector() -> ...: ...  # TODO need to fill in return
-def getGroupItems() -> ...: ...  # TODO need to fill in return
-def getGuiLanguage() -> ...: ...  # TODO need to fill in return
-def getHGuides() -> ...: ...  # TODO need to fill in return
-def getImageColorSpace() -> ...: ...  # TODO need to fill in return
-def getImageFile() -> ...: ...  # TODO need to fill in return
-def getImageOffset() -> ...: ...  # TODO need to fill in return
-def getImagePage() -> ...: ...  # TODO need to fill in return
-def getImagePageCount() -> ...: ...  # TODO need to fill in return
-def getImagePpi() -> ...: ...  # TODO need to fill in return
-def getImagePreviewResolution() -> ...: ...  # TODO need to fill in return
-def getImageScale() -> ...: ...  # TODO need to fill in return
-def getInfo() -> ...: ...  # TODO need to fill in return
-def getItemPageNumber() -> ...: ...  # TODO need to fill in return
-def getJSActionScript() -> ...: ...  # TODO need to fill in return
-def getLastLinkedFrame() -> ...: ...  # TODO need to fill in return
-def getLineBlendmode() -> ...: ...  # TODO need to fill in return
-def getLineCap() -> ...: ...  # TODO need to fill in return
-def getLineColor() -> ...: ...  # TODO need to fill in return
-def getLineJoin() -> ...: ...  # TODO need to fill in return
-def getLineShade() -> ...: ...  # TODO need to fill in return
-def getLineSpacing() -> ...: ...  # TODO need to fill in return
-def getLineSpacingMode() -> ...: ...  # TODO need to fill in return
-def getLineTransparency() -> ...: ...  # TODO need to fill in return
-def getLineWidth() -> ...: ...  # TODO need to fill in return
-def getMargins() -> ...: ...  # TODO need to fill in return
-def getMinWordTracking() -> ...: ...  # TODO need to fill in return
-def getNextLinkedFrame() -> ...: ...  # TODO need to fill in return
-def getObjectAttributes() -> ...: ...  # TODO need to fill in return
-def getObjectType() -> ...: ...  # TODO need to fill in return
+def getFillBlendmode() -> Any: ...  # TODO fill in return
+def getFillColor() -> Any: ...  # TODO fill in return
+def getFillShade() -> Any: ...  # TODO fill in return
+def getFillTransparency() -> Any: ...  # TODO fill in return
+def getFirstLineOffset() -> Any: ...  # TODO fill in return
+def getFirstLinkedFrame() -> Any: ...  # TODO fill in return
+def getFont() -> Any: ...  # TODO fill in return
+def getFontFeatures() -> Any: ...  # TODO fill in return
+def getFontNames() -> Any: ...  # TODO fill in return
+def getFontSize() -> Any: ...  # TODO fill in return
+def getFrameSelectedTextRange() -> Any: ...  # TODO fill in return
+def getText() -> Any: ...  # TODO fill in return
+def getGradientStop() -> Any: ...  # TODO fill in return
+def getGradientStopsCount() -> Any: ...  # TODO fill in return
+def getGradientVector() -> Any: ...  # TODO fill in return
+def getGroupItems() -> Any: ...  # TODO fill in return
+def getGuiLanguage() -> Any: ...  # TODO fill in return
+def getHGuides() -> Any: ...  # TODO fill in return
+def getImageColorSpace() -> Any: ...  # TODO fill in return
+def getImageFile() -> Any: ...  # TODO fill in return
+def getImageOffset() -> Any: ...  # TODO fill in return
+def getImagePage() -> Any: ...  # TODO fill in return
+def getImagePageCount() -> Any: ...  # TODO fill in return
+def getImagePpi() -> Any: ...  # TODO fill in return
+def getImagePreviewResolution() -> Any: ...  # TODO fill in return
+def getImageScale() -> Any: ...  # TODO fill in return
+def getInfo() -> Any: ...  # TODO fill in return
+def getItemPageNumber(name: str) -> int: ...
+def getJSActionScript() -> Any: ...  # TODO fill in return
+def getLastLinkedFrame() -> Any: ...  # TODO fill in return
+def getLineBlendmode() -> Any: ...  # TODO fill in return
+def getLineCap() -> Any: ...  # TODO fill in return
+def getLineColor() -> Any: ...  # TODO fill in return
+def getLineJoin() -> Any: ...  # TODO fill in return
+def getLineShade() -> Any: ...  # TODO fill in return
+def getLineSpacing() -> Any: ...  # TODO fill in return
+def getLineSpacingMode() -> Any: ...  # TODO fill in return
+def getLineTransparency() -> Any: ...  # TODO fill in return
+def getLineWidth() -> Any: ...  # TODO fill in return
+def getMargins() -> Any: ...  # TODO fill in return
+def getMinWordTracking() -> Any: ...  # TODO fill in return
+def getNextLinkedFrame() -> Any: ...  # TODO fill in return
+def getObjectAttributes() -> Any: ...  # TODO fill in return
+def getObjectType() -> Any: ...  # TODO fill in return
 def getPageNSize(nr: int) -> tuple[float, float]: ...
 def pageDimension() -> tuple[float, float]: ...
 def getStyle(objectName: str = "") -> str | None: ...
-def getPosition() -> ...: ...  # TODO need to fill in return
-def getPrevLinkedFrame() -> ...: ...  # TODO need to fill in return
-def getProperty() -> ...: ...  # TODO need to fill in return
-def getPropertyCType() -> ...: ...  # TODO need to fill in return
-def getPropertyNames() -> ...: ...  # TODO need to fill in return
-def getRotation() -> ...: ...  # TODO need to fill in return
-def getRowGuides() -> ...: ...  # TODO need to fill in return
-def getSelectedObject() -> str: ...  
-def getSelectedTextRange() -> ...: ...  # TODO need to fill in return
+def getPosition() -> Any: ...  # TODO fill in return
+def getPrevLinkedFrame() -> Any: ...  # TODO fill in return
+def getProperty() -> Any: ...  # TODO fill in return
+def getPropertyCType() -> Any: ...  # TODO fill in return
+def getPropertyNames() -> Any: ...  # TODO fill in return
+def getRotation() -> Any: ...  # TODO fill in return
+def getRowGuides() -> Any: ...  # TODO fill in return
+def getSelectedObject() -> str: ...
+def getSelectedTextRange() -> Any: ...  # TODO fill in return
 def getSize() -> tuple[float, float]: ...
-def getTextColor() -> ...: ...  # TODO need to fill in return
-def getTextDistances() -> ...: ...  # TODO need to fill in return
-def getTextFlowMode() -> ...: ...  # TODO need to fill in return
+def getTextColor() -> Any: ...  # TODO fill in return
+def getTextDistances() -> Any: ...  # TODO fill in return
+def getTextFlowMode() -> Any: ...  # TODO fill in return
 def getTextLength(texObj: str = "") -> int: ...
-def getTextLines() -> ...: ...  # TODO need to fill in return
-def getTextShade() -> ...: ...  # TODO need to fill in return
-def getTextVerticalAlignment() -> ...: ...  # TODO need to fill in return
-def getTracking() -> ...: ...  # TODO need to fill in return
-def getUnit() -> ...: ...  # TODO need to fill in return
-def getVGuides() -> ...: ...  # TODO need to fill in return
-def getVisualBoundingBox() -> ...: ...  # TODO need to fill in return
-def getWordTracking() -> ...: ...  # TODO need to fill in return
-def getXFontNames() -> ...: ...  # TODO need to fill in return
-def getval() -> ...: ...  # TODO need to fill in return
+def getTextLines() -> Any: ...  # TODO fill in return
+def getTextShade() -> Any: ...  # TODO fill in return
+def getTextVerticalAlignment() -> Any: ...  # TODO fill in return
+def getTracking() -> Any: ...  # TODO fill in return
+def getUnit() -> Any: ...  # TODO fill in return
+def getVGuides() -> Any: ...  # TODO fill in return
+def getVisualBoundingBox() -> Any: ...  # TODO fill in return
+def getWordTracking() -> Any: ...  # TODO fill in return
+def getXFontNames() -> Any: ...  # TODO fill in return
+def getval() -> Any: ...  # TODO fill in return
 def gotoPage(pageNr: int) -> None: ...  # TODO need to fill in return
-def groupObjects(objects: list[str]) -> str: ...  # TODO need to fill in return
-def hyphenateText() -> ...: ...  # TODO need to fill in return
-def importPage() -> ...: ...  # TODO need to fill in return
-def insertHtmlText() -> ...: ...  # TODO need to fill in return
-def insertTableColumns() -> ...: ...  # TODO need to fill in return
-def insertTableRows() -> ...: ...  # TODO need to fill in return
-def insertText() -> ...: ...  # TODO need to fill in return
-def isAnnotated() -> ...: ...  # TODO need to fill in return
-def isExportable() -> ...: ...  # TODO need to fill in return
-def isLocked() -> ...: ...  # TODO need to fill in return
-def isPDFBookmark() -> ...: ...  # TODO need to fill in return
-def isSpotColor() -> ...: ...  # TODO need to fill in return
-def itemDialog() -> ...: ...  # TODO need to fill in return
-def layoutText() -> ...: ...  # TODO need to fill in return
-def layoutTextChain() -> ...: ...  # TODO need to fill in return
-def linkTextFrames() -> ...: ...  # TODO need to fill in return
-def loadImage() -> ...: ...  # TODO need to fill in return
-def loadStylesFromFile() -> ...: ...  # TODO need to fill in return
-def lockObject() -> ...: ...  # TODO need to fill in return
-def lowerActiveLayer() -> ...: ...  # TODO need to fill in return
+def groupObjects(objects: list[str]) -> Any: ...  # TODO fill in return
+def hyphenateText() -> Any: ...  # TODO fill in return
+def importPage() -> Any: ...  # TODO fill in return
+def insertHtmlText() -> Any: ...  # TODO fill in return
+def insertTableColumns() -> Any: ...  # TODO fill in return
+def insertTableRows() -> Any: ...  # TODO fill in return
+def insertText() -> Any: ...  # TODO fill in return
+def isAnnotated() -> Any: ...  # TODO fill in return
+def isExportable() -> Any: ...  # TODO fill in return
+def isLocked() -> Any: ...  # TODO fill in return
+def isPDFBookmark() -> Any: ...  # TODO fill in return
+def isSpotColor() -> Any: ...  # TODO fill in return
+def itemDialog() -> Any: ...  # TODO fill in return
+def layoutText() -> Any: ...  # TODO fill in return
+def layoutTextChain() -> Any: ...  # TODO fill in return
+def linkTextFrames() -> Any: ...  # TODO fill in return
+def loadImage() -> Any: ...  # TODO fill in return
+def loadStylesFromFile() -> Any: ...  # TODO fill in return
+def lockObject() -> Any: ...  # TODO fill in return
+def lowerActiveLayer() -> Any: ...  # TODO fill in return
 def masterPageNames() -> list[str]: ...
-def mergeTableCells(row: int, column: int, numRows: int, numColumns: int, name: str | None = None) -> None: ...
-def messageBox() -> ...: ...  # TODO need to fill in return
-def statusMessage() -> ...: ...  # TODO need to fill in return
-
+def mergeTableCells(
+    row: int,
+    column: int,
+    numRows: int,
+    numColumns: int,
+    name: str | None = None,
+) -> None: ...
+def messageBox() -> Any: ...  # TODO fill in return
+def statusMessage() -> Any: ...  # TODO fill in return
 def newPage(where: int, masterPage: str = "") -> None: ...
-def newStyleDialog() -> ...: ...  # TODO need to fill in return
-def objectExists() -> ...: ...  # TODO need to fill in return
-def openDoc() -> ...: ...  # TODO need to fill in return
-def traceText() -> ...: ...  # TODO need to fill in return
+def newStyleDialog() -> Any: ...  # TODO fill in return
+def objectExists() -> Any: ...  # TODO fill in return
+def traceText() -> Any: ...  # TODO fill in return
 def pageCount() -> int: ...
-def placeVectorFile() -> ...: ...  # TODO need to fill in return
-def pointsToDocUnit() -> ...: ...  # TODO need to fill in return
-def progressReset() -> ...: ...  # TODO need to fill in return
-def progressSet(progress: float) -> ...: ...  # TODO need to fill in return
-def progressTotal() -> ...: ...  # TODO need to fill in return
-def readPDFOptions() -> ...: ...  # TODO need to fill in return
-def redrawAll() -> ...: ...  # TODO need to fill in return
-def removeTableColumns() -> ...: ...  # TODO need to fill in return
-def removeTableRows() -> ...: ...  # TODO need to fill in return
-def renderFont() -> ...: ...  # TODO need to fill in return
-def replaceColor() -> ...: ...  # TODO need to fill in return
-def resizeTableColumn() -> ...: ...  # TODO need to fill in return
-def resizeTableRow() -> ...: ...  # TODO need to fill in return
-def retval() -> ...: ...  # TODO need to fill in return
-def revertDoc() -> ...: ...  # TODO need to fill in return
-def rotateObject() -> ...: ...  # TODO need to fill in return
-def setRotation() -> ...: ...  # TODO need to fill in return
-def saveDoc() -> ...: ...  # TODO need to fill in return
+def placeVectorFile() -> Any: ...  # TODO fill in return
+def pointsToDocUnit() -> Any: ...  # TODO fill in return
+def progressReset() -> Any: ...  # TODO fill in return
+def progressSet(progress: float) -> Any: ...  # TODO fill in return
+def progressTotal() -> Any: ...  # TODO fill in return
+def readPDFOptions() -> Any: ...  # TODO fill in return
+def redrawAll() -> Any: ...  # TODO fill in return
+def removeTableColumns() -> Any: ...  # TODO fill in return
+def removeTableRows() -> Any: ...  # TODO fill in return
+def renderFont() -> Any: ...  # TODO fill in return
+def replaceColor() -> Any: ...  # TODO fill in return
+def resizeTableColumn() -> Any: ...  # TODO fill in return
+def resizeTableRow() -> Any: ...  # TODO fill in return
+def retval() -> Any: ...  # TODO fill in return
+def revertDoc() -> Any: ...  # TODO fill in return
+def rotateObject() -> Any: ...  # TODO fill in return
+def setRotation() -> Any: ...  # TODO fill in return
+def saveDoc() -> None: ...
 def saveDocAs(newName: str) -> None: ...
-def savePDFOptions() -> ...: ...  # TODO need to fill in return
-def savePageAsEPS() -> ...: ...  # TODO need to fill in return
-def scaleGroup(factor: float, name: str = "") -> None : ...  
-def scaleImage() -> ...: ...  # TODO need to fill in return
-def scrollDocument() -> ...: ...  # TODO need to fill in return
-def selectFrameText() -> ...: ...  # TODO need to fill in return
-def selectText() -> ...: ...  # TODO need to fill in return
-def selectionCount() -> ...: ...  # TODO need to fill in return
-def setBaseLine() -> ...: ...  # TODO need to fill in return
-def setBleeds() -> ...: ...  # TODO need to fill in return
-def setCharacterStyle() -> ...: ...  # TODO need to fill in return
-def setColumnGap() -> ...: ...  # TODO need to fill in return
-def setColumnGuides() -> ...: ...  # TODO need to fill in return
-def setColumns() -> ...: ...  # TODO need to fill in return
-def setCornerRadius() -> ...: ...  # TODO need to fill in return
-def setCurrentPageSize() -> ...: ...  # TODO need to fill in return
-def setCursor() -> ...: ...  # TODO need to fill in return
-def setCustomLineStyle() -> ...: ...  # TODO need to fill in return
-def setDocType(facingPages: int, firstPageLeft: int) -> None: ...  # TODO need to fill in return
-def setEditMode() -> ...: ...  # TODO need to fill in return
-def setExportableObject() -> ...: ...  # TODO need to fill in return
-def setFileAnnotation() -> ...: ...  # TODO need to fill in return
-def setFillBlendmode() -> ...: ...  # TODO need to fill in return
-def setFillColor() -> ...: ...  # TODO need to fill in return
-def setFillShade() -> ...: ...  # TODO need to fill in return
-def setFillTransparency() -> ...: ...  # TODO need to fill in return
-def setFirstLineOffset() -> ...: ...  # TODO need to fill in return
-def setFont(fontName: str, textObj: str = "") -> None: ... 
-def setFontFeatures() -> ...: ...  # TODO need to fill in return
-def setFontSize() -> ...: ...  # TODO need to fill in return
-def setGradientFill() -> ...: ...  # TODO need to fill in return
-def setGradientStop() -> ...: ...  # TODO need to fill in return
-def setGradientVector() -> ...: ...  # TODO need to fill in return
-def setHGuides() -> ...: ...  # TODO need to fill in return
-def setImageBrightness() -> ...: ...  # TODO need to fill in return
-def setImageGrayscale() -> ...: ...  # TODO need to fill in return
-def setImageOffset() -> ...: ...  # TODO need to fill in return
-def setImagePage() -> ...: ...  # TODO need to fill in return
-def setImagePreviewResolution() -> ...: ...  # TODO need to fill in return
-def setImageScale() -> ...: ...  # TODO need to fill in return
-def setInfo() -> ...: ...  # TODO need to fill in return
+def savePDFOptions() -> Any: ...  # TODO fill in return
+def savePageAsEPS() -> Any: ...  # TODO fill in return
+def scaleGroup(factor: float, name: str = "") -> None: ...
+def scaleImage() -> Any: ...  # TODO fill in return
+def scrollDocument() -> Any: ...  # TODO fill in return
+def selectFrameText() -> Any: ...  # TODO fill in return
+def selectText(start: int, count: int, name: str = "") -> None: ...
+def selectionCount() -> Any: ...  # TODO fill in return
+def setBaseLine() -> Any: ...  # TODO fill in return
+def setBleeds() -> Any: ...  # TODO fill in return
+def setCharacterStyle() -> Any: ...  # TODO fill in return
+def setColumnGap() -> Any: ...  # TODO fill in return
+def setColumnGuides() -> Any: ...  # TODO fill in return
+def setColumns() -> Any: ...  # TODO fill in return
+def setCornerRadius() -> Any: ...  # TODO fill in return
+def setCurrentPageSize() -> Any: ...  # TODO fill in return
+def setCursor() -> Any: ...  # TODO fill in return
+def setCustomLineStyle() -> Any: ...  # TODO fill in return
+def setDocType(
+    facingPages: int, firstPageLeft: int
+) -> None: ...  # TODO need to fill in return
+def setEditMode() -> Any: ...  # TODO fill in return
+def setExportableObject() -> Any: ...  # TODO fill in return
+def setFileAnnotation() -> Any: ...  # TODO fill in return
+def setFillBlendmode() -> Any: ...  # TODO fill in return
+def setFillColor() -> Any: ...  # TODO fill in return
+def setFillShade() -> Any: ...  # TODO fill in return
+def setFillTransparency() -> Any: ...  # TODO fill in return
+def setFirstLineOffset() -> Any: ...  # TODO fill in return
+def setFont(fontName: str, textObj: str = "") -> None: ...
+def setFontFeatures() -> Any: ...  # TODO fill in return
+def setFontSize(size: float, name: str = "") -> None: ...
+def setGradientFill() -> Any: ...  # TODO fill in return
+def setGradientStop() -> Any: ...  # TODO fill in return
+def setGradientVector() -> Any: ...  # TODO fill in return
+def setHGuides() -> Any: ...  # TODO fill in return
+def setImageBrightness() -> Any: ...  # TODO fill in return
+def setImageGrayscale() -> Any: ...  # TODO fill in return
+def setImageOffset() -> Any: ...  # TODO fill in return
+def setImagePage() -> Any: ...  # TODO fill in return
+def setImagePreviewResolution() -> Any: ...  # TODO fill in return
+def setImageScale() -> Any: ...  # TODO fill in return
+def setInfo() -> Any: ...  # TODO fill in return
 def setItemName(newName: str, name: str = "") -> str: ...
-def setNewName() -> ...: ...  # TODO need to fill in return
-def setJSActionScript() -> ...: ...  # TODO need to fill in return
-def setLineBlendmode() -> ...: ...  # TODO need to fill in return
-def setLinkAnnotation() -> ...: ...  # TODO need to fill in return
-def setMargins() -> ...: ...  # TODO need to fill in return
-def setMinWordTracking() -> ...: ...  # TODO need to fill in return
-def setMultiLine() -> ...: ...  # TODO need to fill in return
-def setNormalMode() -> ...: ...  # TODO need to fill in return
-def setObjectAttributes() -> ...: ...  # TODO need to fill in return
-def setPDFBookmark() -> ...: ...  # TODO need to fill in return
-def setStyle() -> ...: ...  # TODO need to fill in return
-def setProperty() -> ...: ...  # TODO need to fill in return
-def setRedraw() -> ...: ...  # TODO need to fill in return
-def setRowGuides() -> ...: ...  # TODO need to fill in return
-def setScaleFrameToImage() -> ...: ...  # TODO need to fill in return
-def setScaleImageToFrame() -> ...: ...  # TODO need to fill in return
-def setSpotColor() -> ...: ...  # TODO need to fill in return
-def setText() -> ...: ...  # TODO need to fill in return
-def setTextAlignment() -> ...: ...  # TODO need to fill in return
-def setTextAnnotation() -> ...: ...  # TODO need to fill in return
-def setTextColor() -> ...: ...  # TODO need to fill in return
-def setTextDirection() -> ...: ...  # TODO need to fill in return
-def setTextDistances() -> ...: ...  # TODO need to fill in return
-def textFlowMode() -> ...: ...  # TODO need to fill in return
-def setTextScalingH() -> ...: ...  # TODO need to fill in return
-def setTextScalingV() -> ...: ...  # TODO need to fill in return
-def setTextShade() -> ...: ...  # TODO need to fill in return
-def setTextStroke() -> ...: ...  # TODO need to fill in return
-def setTextVerticalAlignment() -> ...: ...  # TODO need to fill in return
-def setTracking() -> ...: ...  # TODO need to fill in return
-def setURIAnnotation() -> ...: ...  # TODO need to fill in return
-def setUnit() -> ...: ...  # TODO need to fill in return
-def setVGuides() -> ...: ...  # TODO need to fill in return
-def setWordTracking() -> ...: ...  # TODO need to fill in return
-def sizeObject() -> ...: ...  # TODO need to fill in return
-def stringValueToPoints() -> ...: ...  # TODO need to fill in return
-def textOverflows() -> ...: ...  # TODO need to fill in return
-def unGroupObjects() -> ...: ...  # TODO need to fill in return
-def unlinkTextFrames() -> ...: ...  # TODO need to fill in return
-def valueDialog() -> ...: ...  # TODO need to fill in return
-def zoomDocument(double: float) -> ...: ...  # TODO need to fill in return
+def setNewName(newName: str, name: str = "") -> str: ...
+def setJSActionScript() -> Any: ...  # TODO fill in return
+def setLineBlendmode() -> Any: ...  # TODO fill in return
+def setLinkAnnotation() -> Any: ...  # TODO fill in return
+def setMargins() -> Any: ...  # TODO fill in return
+def setMinWordTracking() -> Any: ...  # TODO fill in return
+def setMultiLine() -> Any: ...  # TODO fill in return
+def setNormalMode() -> Any: ...  # TODO fill in return
+def setObjectAttributes() -> Any: ...  # TODO fill in return
+def setPDFBookmark() -> Any: ...  # TODO fill in return
+def setStyle() -> Any: ...  # TODO fill in return
+def setProperty() -> Any: ...  # TODO fill in return
+def setRedraw(redraw: bool) -> None: ...  # TODO need to fill in return
+def setRowGuides() -> Any: ...  # TODO fill in return
+def setScaleFrameToImage() -> Any: ...  # TODO fill in return
+def setScaleImageToFrame() -> Any: ...  # TODO fill in return
+def setSpotColor() -> Any: ...  # TODO fill in return
+def setText(text: str, name: str = "") -> None: ...
+def setTextAlignment(align: int, name: str = None) -> None: ...
+def setTextAnnotation() -> Any: ...  # TODO fill in return
+def setTextColor(color: str, name: str = "") -> None: ...
+def setTextDirection() -> Any: ...  # TODO fill in return
+def setTextDistances() -> Any: ...  # TODO fill in return
+def textFlowMode() -> Any: ...  # TODO fill in return
+def setTextScalingH() -> Any: ...  # TODO fill in return
+def setTextScalingV() -> Any: ...  # TODO fill in return
+def setTextShade() -> Any: ...  # TODO fill in return
+def setTextStroke() -> Any: ...  # TODO fill in return
+def setTextVerticalAlignment() -> Any: ...  # TODO fill in return
+def setTracking() -> Any: ...  # TODO fill in return
+def setURIAnnotation() -> Any: ...  # TODO fill in return
+def setUnit() -> Any: ...  # TODO fill in return
+def setVGuides() -> Any: ...  # TODO fill in return
+def setWordTracking() -> Any: ...  # TODO fill in return
+def sizeObject() -> Any: ...  # TODO fill in return
+def stringValueToPoints() -> Any: ...  # TODO fill in return
+def textOverflows() -> Any: ...  # TODO fill in return
+def unGroupObjects() -> Any: ...  # TODO fill in return
+def unlinkTextFrames() -> Any: ...  # TODO fill in return
+def valueDialog() -> Any: ...  # TODO fill in return
+def zoomDocument(double: float) -> Any: ...  # TODO fill in return
+
 # =======
 # <class 'float'>s
 # =======

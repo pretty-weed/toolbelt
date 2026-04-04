@@ -4,14 +4,19 @@ from typing import Callable, ClassVar
 
 import scribus
 
-from dandy_lib.datatypes.twodee import  Size
+from dandy_lib.datatypes.twodee import Size
 
 from dandiscribe.data import Align
 from dandiscribe.enums import FILL, HAlign, VAlign
 from dandiscribe.style import LineStyle, ParagraphStyle, TextStyle
-from dandiscribe.util import get_justify_adjustments, ok_to_ignore_dialog, TempGoTo
+from dandiscribe.util import (
+    get_justify_adjustments,
+    ok_to_ignore_dialog,
+    TempGoTo,
+)
 
 logger = getLogger(__name__)
+
 
 @dataclass
 class Box:
@@ -41,7 +46,7 @@ class Box:
         height: int,
         master=None,
         prefill_from_bottom: bool = False,
-        pre_fill_max_lines: int | None = None
+        pre_fill_max_lines: int | None = None,
     ):
         if pre_fill_max_lines is None:
             pre_fill_max_lines = self.pre_fill_max_lines
@@ -55,13 +60,14 @@ class Box:
         )
 
         if self.align.vertical is VAlign.JUSTIFIED:
-            height_adj = get_justify_adjustments(self.rows, self.height % self.rows)
+            height_adj = get_justify_adjustments(
+                self.rows, self.height % self.rows
+            )
         else:
             height_adj = [0] * self.rows
 
-
         for row, row_height_adj in zip(range(self.rows), height_adj):
-            
+
             this_row_height = row_height + row_height_adj
             row_y = y + (row * this_row_height)
             if prefill_from_bottom and self.rows - 1 - row < len(self.pre_fill):
@@ -73,22 +79,23 @@ class Box:
 
             if draw_master and self.check_boxes:
                 if self.draw_cb_func is None or self.draw_cb_func(row, 0):
-                    row_cb = scribus.setItemName(f"RowCB: {row}", 
+                    row_cb = scribus.setItemName(
+                        f"RowCB: {row}",
                         cb.draw(
                             x + sub_row_height // 4,
                             row_y + sub_row_height // 3 + sub_row_height,
-                        )
+                        ),
                     )
                     objects.append(row_cb)
 
             for sub_row in range(self.sub_rows):
                 sr_x = x
                 sub_row_y = row_y + (sub_row * sub_row_height)
-                
+
                 # mebbe not needed
                 if draw_master:
                     if not sub_row == self.sub_rows - 1:
-                    # draw dashed line between sub rows
+                        # draw dashed line between sub rows
 
                         sub_line = scribus.createLine(
                             x,
@@ -102,20 +109,22 @@ class Box:
                             self.sub_row_style.weight, sub_line
                         )
 
-
                 if self.check_boxes:
-                    if draw_master and self.draw_cb_func is not None and self.draw_cb_func(row, sub_row + 1):
+                    if (
+                        draw_master
+                        and self.draw_cb_func is not None
+                        and self.draw_cb_func(row, sub_row + 1)
+                    ):
                         objects.append(
                             scribus.setItemName(
                                 f"subrow_cb {row}.{sub_row}",
                                 cb.draw(
                                     sr_x + sub_row_height // 4,
                                     sub_row_y + sub_row_height // 3,
-                                )
+                                ),
                             )
                         )
-                    sr_x += sub_row_height // 2 + sub_row_height //3
-                    
+                    sr_x += sub_row_height // 2 + sub_row_height // 3
 
                 if not draw_master and row_prefill is not None:
                     if prefill_from_bottom:
@@ -139,29 +148,49 @@ class Box:
                             self.pre_fill_style.apply(objects[-1])
                         scribus.layoutText(objects[-1])
                         font_size = scribus.getFontSize(objects[-1])
-                        while pre_fill_max_lines is not None and (scribus.getTextLines(objects[-1]) > pre_fill_max_lines or scribus.getFrameText(objects[-1]) != scribus.getAllText(objects[-1])):
-                            logger.info('objects 139: pf_ml: %s (%s) %s, %s', scribus.getFrameText(objects[-1]), font_size, pre_fill_max_lines, scribus.getTextLines(objects[-1]))
+                        while pre_fill_max_lines is not None and (
+                            scribus.getTextLines(objects[-1])
+                            > pre_fill_max_lines
+                            or scribus.getFrameText(objects[-1])
+                            != scribus.getAllText(objects[-1])
+                        ):
+                            logger.info(
+                                "objects 139: pf_ml: %s (%s) %s, %s",
+                                scribus.getFrameText(objects[-1]),
+                                font_size,
+                                pre_fill_max_lines,
+                                scribus.getTextLines(objects[-1]),
+                            )
                             font_size -= 0.5
                             scribus.setFontSize(font_size, objects[-1])
-                            
+
                             scribus.layoutText(objects[-1])
-                        logger.info('objects 143: pf_ml: %s - %s(%s, %s) %s, %s', scribus.getFrameText(objects[-1]), scribus.getAllText(objects[-1]), scribus.getFontSize(objects[-1]), font_size, pre_fill_max_lines, scribus.getTextLines(objects[-1]))
-                            
+                        logger.info(
+                            "objects 143: pf_ml: %s - %s(%s, %s) %s, %s",
+                            scribus.getFrameText(objects[-1]),
+                            scribus.getAllText(objects[-1]),
+                            scribus.getFontSize(objects[-1]),
+                            font_size,
+                            pre_fill_max_lines,
+                            scribus.getTextLines(objects[-1]),
+                        )
 
             # Row line (bottom)
             if draw_master:
                 line = scribus.createLine(
-                    x, row_y + this_row_height, x + width + self.line_extra_length, row_y + this_row_height
+                    x,
+                    row_y + this_row_height,
+                    x + width + self.line_extra_length,
+                    row_y + this_row_height,
                 )
                 objects.append(line)
                 scribus.setLineStyle(self.row_style.style, line)
                 scribus.setLineWidth(self.row_style.weight, line)
-            
-        
+
         if not objects:
             return None
         if len(objects) == 1:
-            return objects[0]     
+            return objects[0]
         group = scribus.groupObjects(list(set(objects)))
         if self.name is not None:
             group = scribus.setItemName(self.name, group)
@@ -263,6 +292,7 @@ class ColumnSection:
     title_style: TextStyle | ParagraphStyle = None
     title_min_y: int = 0
     title_line_style: LineStyle | None = None
+
     @property
     def rows(self):
         # int bool title is 1 if there is a title, 0 if not
@@ -294,10 +324,12 @@ class ColumnSection:
 
         if self.title and row_height < self.title_min_y:
             row_height = (height - (self.title_min_y - row_height)) // rows
-        
+
         if self.box_align.vertical is VAlign.JUSTIFIED:
             # fill out the adjustments
-            justify_adjustments = get_justify_adjustments(len(self.boxes), height % len(self.boxes))
+            justify_adjustments = get_justify_adjustments(
+                len(self.boxes), height % len(self.boxes)
+            )
         else:
             justify_adjustments = [0] * len(self.boxes)
 
@@ -309,7 +341,7 @@ class ColumnSection:
                 scribus.setText(self.title, title_box)
                 if self.title_style is not None:
                     self.title_style.apply(title_box)
-                
+
                 scribus.setTextVerticalAlignment(
                     scribus.ALIGNV_BOTTOM, title_box
                 )
@@ -323,9 +355,11 @@ class ColumnSection:
                     self.title_line_style.apply(title_line)
 
             y += title_height
-        
+
         for box, height_adjustment in zip(self.boxes, justify_adjustments):
-            box_height = row_height * box.rows * box.sub_rows + height_adjustment
+            box_height = (
+                row_height * box.rows * box.sub_rows + height_adjustment
+            )
             box_object = box.draw(x, y, width - 10, box_height, master=master)
             if box_object is not None:
                 objects.append(box_object)
@@ -365,6 +399,5 @@ class Column:
                     section != self.sections[-1]
                     and self.divider_line is not None
                 ):
-                    section_divider = scribus.createLine(x, y, x + width, y)  
+                    section_divider = scribus.createLine(x, y, x + width, y)
                     self.divider_line.apply(section_divider)
-                    

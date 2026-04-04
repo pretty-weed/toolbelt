@@ -1,19 +1,22 @@
 from dataclasses import dataclass, field, InitVar, MISSING
 
-from datetime import date, timedelta
+import datetime
 from logging import getLogger, INFO
 from pathlib import Path
-from typing import Collection
+from typing import Optional, Collection
 
 from dandiscribe.enums import COLORS
 from dandiscribe.objects import Box, ColumnSection
 import dandiscribe.style as style
 
 from .data import Event, Task, TIME_OF_DAY
+
 logger = getLogger(__name__)
 logger.setLevel(INFO)
+
+
 @dataclass(kw_only=True)
-class WeekCalToDsection(ColumnSection):
+class WeekCalToDSection(ColumnSection):
 
     time_of_day: TIME_OF_DAY = MISSING
 
@@ -26,11 +29,15 @@ class WeekCalToDsection(ColumnSection):
         tasks: Collection[Task] = field(default_factory=[]),
         events: Collection[Event] = field(default_factory=[]),
         check_boxes: bool = True,
-        background: COLORS = None,
+        background: Optional[COLORS] = None,
         remaining_spaces: int = 2,
-        title_style: style.TextStyle | style.ParagraphStyle = style.WEEK_CAL_TOD_HDR_STYLE,
+        title_style: (
+            style.TextStyle | style.ParagraphStyle
+        ) = style.WEEK_CAL_TOD_HDR_STYLE,
         title_line_style: style.LineStyle | None = None,
-        task_style: style.TextStyle | style.ParagraphStyle = style.WEEK_CAL_TASK_STYLE
+        task_style: (
+            style.TextStyle | style.ParagraphStyle
+        ) = style.WEEK_CAL_TASK_STYLE,
     ):
         tasks = [task for task in tasks or [] if task in time_of_day]
         logger.debug(f"post filter tasks ({time_of_day}): {tasks}")
@@ -60,12 +67,19 @@ class WeekCalToDsection(ColumnSection):
                 draw_cb_func=lambda r, sr: ((r * sub_rows) + sr) % 3,
             )
         ]
-        return cls(time_of_day=time_of_day, boxes=boxes, background=background, title=time_of_day.name.split()[0].title(), title_style=title_style, title_line_style=title_line_style)
+        return cls(
+            time_of_day=time_of_day,
+            boxes=boxes,
+            background=background,
+            title=time_of_day.name.split()[0].title(),
+            title_style=title_style,
+            title_line_style=title_line_style,
+        )
 
 
 @dataclass(kw_only=True)
 class MonthDay(ColumnSection):
-    date: date
+    date: datetime.date
     tasks: InitVar[list[Task]] = None
     events: InitVar[list[Event]] = None
     past_month_color: InitVar[str] = COLORS.GREY
@@ -75,18 +89,20 @@ class MonthDay(ColumnSection):
         cls,
         day: int,
         week: int,
-        first_date: date,
+        first_date: datetime.date,
         page_month: int,
-        tasks: list[Task] = None,
+        tasks: list[Task] | None = None,
         past_month_color: str = COLORS.GREY,
         **kwargs,
     ):
         if tasks is None:
             tasks = []
-        day_date = first_date + timedelta(days=day, weeks=week)
+        day_date = first_date + datetime.timedelta(days=day, weeks=week)
         if day_date.month != page_month:
             kwargs["background"] = past_month_color
-        kwargs["title"] = day_date.strftime(f"%d{' (%b)' if day_date.month != page_month else ''}").strip("0")
+        kwargs["title"] = day_date.strftime(
+            f"%d{' (%b)' if day_date.month != page_month else ''}"
+        ).strip("0")
 
         return cls(
             tasks=tasks,
@@ -94,5 +110,5 @@ class MonthDay(ColumnSection):
             past_month_color=past_month_color,
             title_style=style.MONTH_DATE_PSTYLE,
             title_in_master=False,
-            **kwargs
+            **kwargs,
         )

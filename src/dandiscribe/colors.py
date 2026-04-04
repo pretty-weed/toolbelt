@@ -12,6 +12,7 @@ GREY_VAL = (
 ) // 2
 COLOR_VALUES[COLORS.GREY] = (GREY_VAL, GREY_VAL, GREY_VAL, GREY_VAL)
 
+
 def register_colors():
     for color, values in COLOR_VALUES.items():
         if color in scribus.getColorNames():

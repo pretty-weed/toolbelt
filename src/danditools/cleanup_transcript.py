@@ -9,11 +9,12 @@ from pathlib import Path, PurePath
 
 Line = namedtuple("Line", ["speaker", "timestamp", "line"])
 
+
 def main():
     parser = ArgumentParser()
     parser.add_argument("files", nargs="+", type=Path)
     parsed = parser.parse_args()
-    
+
     for file in parsed.files:
         out_lines = []
         prefix = 0
@@ -27,7 +28,9 @@ def main():
             last_line = in_line
             if out_lines and out_lines[-1].line.strip() == in_line:
                 continue
-            elif len(in_line.split(":")) == 2 and all(side.isdigit() for side in in_line.split(":")):
+            elif len(in_line.split(":")) == 2 and all(
+                side.isdigit() for side in in_line.split(":")
+            ):
                 if timestamp is not None:
                     out_lines.append(Line(speaker, timestamp, in_line))
                 timestamp = in_line
@@ -42,4 +45,3 @@ def main():
         for out_line in out_lines:
             print(out_line)
             print(out_line.line)
-            

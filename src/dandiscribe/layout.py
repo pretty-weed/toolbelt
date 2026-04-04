@@ -98,7 +98,10 @@ class MasterPage(MixableNamedTuple, Page):
 
     @property
     def name(self) -> str:
-        return self.master_page
+        return str(self.master_page)
+
+    def draw(self) -> None:  # type: ignore[override]
+        return Page.draw(self)
 
 
 class SpreadPage(MixableNamedTuple, Page):

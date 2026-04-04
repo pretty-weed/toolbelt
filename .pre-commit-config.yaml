@@ -1,0 +1,32 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+    -   id: trailing-whitespace
+    -   id: end-of-file-fixer
+    -   id: check-yaml
+    -   id: check-added-large-files
+# not ready for this yet
+# -   repo: https://github.com/pre-commit/mirrors-mypy
+#     rev: 'v1.18.2'  # Use the sha / tag you want to point at
+#     hooks:
+#     -   id: mypy
+#         exclude: '.*.pyi$'
+#         pass_filenames: true
+#         additional_dependencies:
+#         - types-PyYAML
+#         - pytest-mypy
+
+- repo: https://github.com/psf/black
+  rev: 25.11.0
+  hooks:
+    - id: black
+      args: [--line-length=80]
+      language_version: python3.14
+
+#-   repo: https://github.com/asottile/reorder-python-imports
+#    rev: v3.16.0
+#    hooks:
+#    -   id: reorder-python-imports

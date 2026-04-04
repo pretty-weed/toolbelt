@@ -1,4 +1,3 @@
-from copy import copy
 from typing import NamedTuple
 from pathlib import Path
 

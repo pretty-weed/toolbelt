@@ -13,6 +13,8 @@ class Margins(NamedTuple):
     right: float
     bottom: float
     left: float
+    @lru_cache
+    def as_tuple(self) -> tuple[float, float, float, float]: ...
     @property
     @lru_cache
     def horizontal(self) -> float: ...

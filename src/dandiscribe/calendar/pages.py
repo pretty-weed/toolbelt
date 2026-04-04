@@ -38,12 +38,16 @@ class CalendarPage(NamedTuple):
     ):
         return super().draw(master)
 
-    def get_delta_date(self, days: int = 0, weeks: int = 0) -> tuple[datetime.date, bool]:
+    def get_delta_date(
+        self, days: int = 0, weeks: int = 0
+    ) -> tuple[datetime.date, bool]:
         dd = self.page_date + datetime.timedelta(days=days, weeks=weeks)
         return dd, dd.month == self.page_date.month
 
+
 class CalendarMasterPage:
     pass
+
 
 @dataclass(kw_only=True)
 class NotesSpread(CalendarPage, SpreadPage):
@@ -66,7 +70,7 @@ class NotesSpread(CalendarPage, SpreadPage):
         with self:
             margins, usable_size = self._get_margins_and_usable_size()
             usable_width, usable_height = usable_size
-            draw_master = master is None or bool(master)
+            draw_master: bool = master is None or bool(master)
 
             # just do the damn thing for now
             if draw_master:
@@ -96,7 +100,6 @@ class MonthSpreadPage(CalendarPage, SpreadPage):
         if self.side is None or self.side is MISSING:
             raise TypeError("side must be provided as keyword")
 
-        
         if self.page_date.day != 1:
             raise ValueError(
                 f"{self.page_date} is not the first of the month ({self.page_date.weekday()})"

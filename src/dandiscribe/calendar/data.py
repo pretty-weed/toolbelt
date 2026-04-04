@@ -1,7 +1,7 @@
 # get events from calendar url
 
 
-from collections.abc import Iterator
+from collections.abc import Container, Iterator
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from enum import Enum
@@ -260,7 +260,7 @@ class TIME_OF_DAY(Enum):
             except AttributeError:
                 pass
             try:
-                return self.start <= other <= self.end
+                res: bool = self.start <= other <= self.end
             except TypeError:
                 try:
                     return self.start <= other.start and other.end <= self.end
@@ -280,13 +280,14 @@ class TIME_OF_DAY(Enum):
                     other,
                     self.end,
                 )
+                return res
         logger.info("TIME_OF_DAY fallback false (%s in %s)", other, self)
         return False
 
     def match(
         self,
         time: datetime | time,
-        duration: Optional[timedelta | int] = None,
+        duration: timedelta | int | None = None,
     ) -> bool:
 
         logger.debug(
@@ -414,7 +415,7 @@ class RoutineTime:
 
 
 @dataclass
-class Task:
+class Task(Container):
     title: str
     description: str = None
     due: date | datetime = None
@@ -449,7 +450,7 @@ class Task:
 
 
 def tasks_by_routine_day_and_time(
-    tasks: list[Task], valid_times: Optional[list[TIME_OF_DAY]] = None
+    tasks: list[Task], valid_times: list[TIME_OF_DAY] | None = None
 ) -> dict[int, set[Task]]:
     sorted_tasks = {}
     if valid_times is None:
@@ -476,7 +477,7 @@ def tasks_by_routine_day_and_time(
         else:
             time_of_day = task.routine_time.time_of_day
 
-        task_weekdays = task.routine_time.weekdays
+        task_weekdays: frozenset[int] | None = task.routine_time.weekdays
         if task_weekdays is None:
             task_weekdays = list(range(7))
 

@@ -143,7 +143,10 @@ class Document:
         total = mp_count + len(self.pages)
         done = 0
         for page in self.pages:
-            if page.master_page is not None and page.master_page not in self.masterpages:
+            if (
+                page.master_page is not None
+                and page.master_page not in self.masterpages
+            ):
                 scribus.progressSet((done + 1) // total)
                 master_page = page.as_master_page()
                 self.masterpages[page.master_page] = master_page

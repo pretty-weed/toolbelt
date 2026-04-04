@@ -1,5 +1,6 @@
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from functools import lru_cache
+from os import linesep
 from typing import Any, ClassVar, Literal, NamedTuple, Self, TypeVar
 
 from dandiscribe.enums import PAGESIDE
@@ -24,10 +25,18 @@ class Page(MixableNamedTuple):
     is_master: bool = False
 
     def as_page(self) -> "Page":
-        return self.__class__(**(self.__dict__ | {"is_master": False}))
+        return self.__class__(**(self._asdict() | {"is_master": False}))
 
     def as_master_page(self) -> "Page":
-        return self.__class__(**(self.__dict__ | {"is_master": True}))
+        return MasterPage(
+            **(
+                dict(
+                    (k, v)
+                    for k, v in self._asdict().items()
+                    if k not in ["page_number", "is_master"]
+                )
+            )
+        )
 
     def get_margins_and_usable_size(self) -> tuple[Margins, Size]:
         try:
@@ -67,19 +76,22 @@ class Page(MixableNamedTuple):
         while self.page_number >= scribus.pageCount():
             scribus.newPage(-1, self.master_page)
 
-    def draw(self, master: str | None = None) -> None:
+    def draw(self, bake_master: bool = False) -> None:
+
+        if self.master_page and not self.is_master:
+            raise ValueError(f"making page {self}")
         if self.is_master:
             return
-        draw_master: str | Literal[True] = master is None or master
-
-        if not any([self.is_master, draw_master, self.master_page is None]):
-            scribus.applyMasterPage(self.master_page, self.page_number)
+        if bake_master:
+            raise NotImplementedError()
+        elif not self.is_master:
+            raise ValueError(
+                f"applying {self.master_page} to {self.page_number}"
+            )
+            scribus.applyMasterPage(master_page, self.page_number)
 
 
 class MasterPage(MixableNamedTuple, Page):
-    """
-    ToDo: when I can mask out things from namespace by making them class attrs
-    """
 
     page_number: ClassVar[None] = None
     is_master: ClassVar[bool] = True
@@ -118,10 +130,42 @@ class Sheet(NamedTuple):
 Doc = TypeVar("Doc", bound="Document")
 
 
+def get_mpage_sizes() -> dict[str, Size]:
+    sizes: dict[str, Size] = {}
+    for mpage_name in scribus.masterPageNames():
+        scribus.editMasterPage(mpage_name)
+        sizes[mpage_name] = Size.factory(*scribus.getPageSize())
+    return sizes
+
+
 @dataclass
 class Document:
     pages: list[Page] = field(default_factory=list)
     masterpages: dict[str, MasterPage] = field(default_factory=dict)
+
+    @classmethod
+    def from_current(cls) -> Self:
+        if not scribus.haveDoc():
+            raise EnvironmentError("No docs open")
+        mpages: dict[str, MasterPage] = dict(
+            (mp, MasterPage(mp, size=size))
+            for mp, size in get_mpage_sizes().items()
+        )
+        page_mpages: dict[int, str] = dict(
+            (pg_no, scribus.getMasterPage(pg_no))
+            for pg_no in range(1, scribus.pageCount() + 1)
+        )
+        return cls(
+            [
+                Page(
+                    page_no,
+                    Size(*scribus.getPageNSize(page_no)),
+                    master_page=page_mpages.get(page_no),
+                )
+                for page_no in range(1, scribus.pageCount() + 1)
+            ],
+            mpages,
+        )
 
     @classmethod
     def create(
@@ -155,11 +199,12 @@ class Document:
             masters,
         )
 
-        return cls
+        return doc
 
     def make(self):
         assert len(set(page.size for page in self.pages)) == 1
         if not scribus.newDocument(
+            # TODO ensure page uniformity
             tuple(self.pages[0].size),
             (10, 10, 10, 15),
             scribus.PORTRAIT,
@@ -173,29 +218,36 @@ class Document:
 
         # Setup the master pages
 
-    def draw(self, *draw_args, **draw_kwargs):
+    def draw(self, *draw_args, **draw_kwargs) -> None:
         # make master pages
         scribus.progressReset()
         mp_count = len(set(page.master_page for page in self.pages))
         total = mp_count + len(self.pages)
         done = 0
         master_kwargs = draw_kwargs.get("master_kwargs", draw_kwargs)
+        mp_logs: list[str] = []
+        for master_page in self.masterpages.values():
+            master_page.make()
+            master_page.draw()
         for page in self.pages:
             if (
                 page.master_page is not None
                 and page.master_page not in self.masterpages
             ):
-                scribus.progressSet((done + 1) // total)
-                master_page = page.as_master_page()
-                self.masterpages[page.master_page] = master_page
-                master_page.draw(master=True, *draw_kwargs, **master_kwargs)
+                mp_logs.append(
+                    f"making master page {page.master_page} for page {page}"
+                )
+                # scribus.progressSet((done + 1) // total)
+                as_mpage: Page = page.as_master_page()
+                self.masterpages[page.master_page] = as_mpage
+                as_mpage.make()
+                as_mpage.draw(master=True, *draw_kwargs, **master_kwargs)
+                mp_logs.append(str(as_mpage))
                 done += 1
-
                 assert all([pg.is_master for pg in self.masterpages.values()])
                 assert not any([pg.is_master for pg in self.pages])
-
         # make pages
         for page in self.pages:
             scribus.progressSet((done + 1) // total)
-            page.draw(master=False, *draw_args, **draw_kwargs)
+            page.draw(*draw_args, **draw_kwargs)
             done += 1

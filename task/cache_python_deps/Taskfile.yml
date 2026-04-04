@@ -16,7 +16,6 @@ vars:
 tasks:
   default:
     vars:
-      boop: doop
       EXISTS_ACTION: '{{.EA | default "s"}}'
     requires:
       vars:
@@ -25,7 +24,7 @@ tasks:
           enum: [ "s", "i", "w", "b", "a"]
     cmds:
       - 'echo "EXISTS_ACTION: {{ .EXISTS_ACTION }}"'
-
+      - 'echo "CACHE_DIR, SELECTOR: {{ .CACHE_DIR }}, {{ .CACHE_SELECTOR }}"'
   cache_deps:
     vars:
       PYTHON: '{{ .PYTHON | default "python3" }}'

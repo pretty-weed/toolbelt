@@ -6,9 +6,10 @@ if "/usr/share/scribus/scripts" not in sys.path:
 
 import dandiscribe
 import dandiscribe.enums
+from dandiscribe.layout import PAPER_LETTER
 import dandiscribe.util
 import dandiscribe.zine
 from dandiscribe.zine import layout as zine_layout
 
 
-zine_layout._generate_pages(zine_layout.Layout.QUARTER, 16, 4)
+zine_layout.generate_pages(16, 4, print_size=PAPER_LETTER)

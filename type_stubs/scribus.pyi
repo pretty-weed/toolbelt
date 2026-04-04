@@ -54,6 +54,16 @@ UNIT_INCHES: int
 UNIT_MM: int
 UNIT_PICAS: int
 UNIT_PT: int
+
+ALIGN_LEFT: int
+ALIGN_RIGHT: int
+ALIGN_FORCED: int
+ALIGN_CENTERED: int
+ALIGN_BLOCK: int
+
+ALIGNV_TOP: int  # 0
+ALIGNV_CENTERED: int  # 1
+ALIGNV_BOTTOM: int  # 2
 # =======
 # types
 # =======
@@ -801,7 +811,7 @@ def scaleGroup(factor: float, name: str = "") -> None: ...
 def scaleImage() -> Any: ...  # TODO fill in return
 def scrollDocument() -> Any: ...  # TODO fill in return
 def selectFrameText() -> Any: ...  # TODO fill in return
-def selectText() -> Any: ...  # TODO fill in return
+def selectText(start: int, count: int, name: str = "") -> None: ...
 def selectionCount() -> Any: ...  # TODO fill in return
 def setBaseLine() -> Any: ...  # TODO fill in return
 def setBleeds() -> Any: ...  # TODO fill in return
@@ -826,7 +836,7 @@ def setFillTransparency() -> Any: ...  # TODO fill in return
 def setFirstLineOffset() -> Any: ...  # TODO fill in return
 def setFont(fontName: str, textObj: str = "") -> None: ...
 def setFontFeatures() -> Any: ...  # TODO fill in return
-def setFontSize() -> Any: ...  # TODO fill in return
+def setFontSize(size: float, name: str = "") -> None: ...
 def setGradientFill() -> Any: ...  # TODO fill in return
 def setGradientStop() -> Any: ...  # TODO fill in return
 def setGradientVector() -> Any: ...  # TODO fill in return
@@ -856,10 +866,10 @@ def setRowGuides() -> Any: ...  # TODO fill in return
 def setScaleFrameToImage() -> Any: ...  # TODO fill in return
 def setScaleImageToFrame() -> Any: ...  # TODO fill in return
 def setSpotColor() -> Any: ...  # TODO fill in return
-def setText() -> Any: ...  # TODO fill in return
-def setTextAlignment() -> Any: ...  # TODO fill in return
+def setText(text: str, name: str = "") -> None: ...
+def setTextAlignment(align: int, name: str = None) -> None: ...
 def setTextAnnotation() -> Any: ...  # TODO fill in return
-def setTextColor() -> Any: ...  # TODO fill in return
+def setTextColor(color: str, name: str = "") -> None: ...
 def setTextDirection() -> Any: ...  # TODO fill in return
 def setTextDistances() -> Any: ...  # TODO fill in return
 def textFlowMode() -> Any: ...  # TODO fill in return

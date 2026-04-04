@@ -21,18 +21,18 @@ MODE_RE = re.compile
 """
 Screen 0: minimum 320 x 200, current 5040 x 3840, maximum 16384 x 16384
 eDP connected primary 2880x1800+2160+2040 (normal left inverted right x axis y axis) 302mm x 188mm
-   2880x1800    120.00*+  60.00  
-   1920x1200    120.00  
-   1920x1080    120.00  
-   1600x1200    120.00  
-   1680x1050    120.00  
-   1280x1024    120.00  
-   1440x900     120.00  
-   1280x800     120.00  
-   1280x720     120.00  
-   1024x768     120.00  
-   800x600      120.00  
-   640x480      120.00  
+   2880x1800    120.00*+  60.00
+   1920x1200    120.00
+   1920x1080    120.00
+   1600x1200    120.00
+   1680x1050    120.00
+   1280x1024    120.00
+   1440x900     120.00
+   1280x800     120.00
+   1280x720     120.00
+   1024x768     120.00
+   800x600      120.00
+   640x480      120.00
 HDMI-A-0 disconnected (normal left inverted right x axis y axis)
 DisplayPort-0 disconnected (normal left inverted right x axis y axis)
 DisplayPort-1 disconnected (normal left inverted right x axis y axis)
@@ -141,7 +141,7 @@ def parse(verbose: bool = False):
 
     """
     for line in raw.splitlines():
-        if not line.strip(): 
+        if not line.strip():
             continue
         if line.startsWith("Screen "):
             screen_record = []
@@ -154,7 +154,7 @@ def parse(verbose: bool = False):
             # has whitespace at beginning, continuation of previous record
             if not screen_record:
                 raise ValueError("did not understand query out")
-            
+
 
     """
 

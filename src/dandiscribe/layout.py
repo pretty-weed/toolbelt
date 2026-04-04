@@ -15,6 +15,8 @@ from dandiscribe.data import Margins
 PAPER_LETTER: Size = Size(*scribus.PAPER_LETTER)
 PAPER_A4: Size = Size(*scribus.PAPER_A4)
 PAPER_A5: Size = Size(*scribus.PAPER_A5)
+
+
 class Page(MixableNamedTuple):
     page_number: int
     size: Size = Size.factory(*scribus.PAPER_A5)
@@ -78,12 +80,14 @@ class MasterPage(MixableNamedTuple, Page):
     """
     ToDo: when I can mask out things from namespace by making them class attrs
     """
+
     page_number: ClassVar[None] = None
     is_master: ClassVar[bool] = True
 
     @property
     def name(self) -> str:
         return self.master_page
+
 
 class SpreadPage(MixableNamedTuple, Page):
     inside_margin: int
@@ -95,7 +99,6 @@ class Sheet(NamedTuple):
     front: Page
     back: Page
 
-    
     @property
     @lru_cache
     def size(self) -> Size:
@@ -112,7 +115,8 @@ class Sheet(NamedTuple):
 
 
 # Create a generic variable that can be 'Parent', or any subclass.
-Doc = TypeVar('Doc', bound='Document')
+Doc = TypeVar("Doc", bound="Document")
+
 
 @dataclass
 class Document:
@@ -120,28 +124,39 @@ class Document:
     masterpages: dict[str, MasterPage] = field(default_factory=dict)
 
     @classmethod
-    def create(cls: type[Doc], page_count: int, page_size: Size, create_masters: bool = True, masters_begin: int = 2) -> Doc:
+    def create(
+        cls: type[Doc],
+        page_count: int,
+        page_size: Size,
+        create_masters: bool = True,
+        masters_begin: int = 2,
+    ) -> Doc:
         if create_masters:
-            masters = dict((mpname, MasterPage(page_size, mpname)) for mpname in [f"{side}-default" for side in ["left", "right"]])
+            masters = dict(
+                (mpname, MasterPage(page_size, mpname))
+                for mpname in [f"{side}-default" for side in ["left", "right"]]
+            )
         else:
             masters = {}
         master_pages: tuple[str, str] = ("left-default", "right-default")
         doc = cls(
             [
                 Page(
-                    pg_num, page_size, 
-                    master_page=
-                        (
-                            master_pages[pg_num % len(masters)] 
-                            if masters and masters_begin <= pg_num else None
-                        ) 
-                ) 
+                    pg_num,
+                    page_size,
+                    master_page=(
+                        master_pages[pg_num % len(masters)]
+                        if masters and masters_begin <= pg_num
+                        else None
+                    ),
+                )
                 for pg_num in range(1, page_count + 1)
-            ], 
+            ],
             masters,
         )
 
         return cls
+
     def make(self):
         assert len(set(page.size for page in self.pages)) == 1
         if not scribus.newDocument(
@@ -158,7 +173,6 @@ class Document:
 
         # Setup the master pages
 
-
     def draw(self, *draw_args, **draw_kwargs):
         # make master pages
         scribus.progressReset()
@@ -167,7 +181,10 @@ class Document:
         done = 0
         master_kwargs = draw_kwargs.get("master_kwargs", draw_kwargs)
         for page in self.pages:
-            if page.master_page is not None and page.master_page not in self.masterpages:
+            if (
+                page.master_page is not None
+                and page.master_page not in self.masterpages
+            ):
                 scribus.progressSet((done + 1) // total)
                 master_page = page.as_master_page()
                 self.masterpages[page.master_page] = master_page
@@ -180,8 +197,5 @@ class Document:
         # make pages
         for page in self.pages:
             scribus.progressSet((done + 1) // total)
-            page.draw(
-                master=False, *draw_args, **draw_kwargs
-            )
+            page.draw(master=False, *draw_args, **draw_kwargs)
             done += 1
-

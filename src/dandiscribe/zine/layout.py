@@ -50,8 +50,10 @@ class PrintPage(MixableNamedTuple, Page):
     def get_margins_and_usable_size(self) -> tuple[Margins, Size]:
         return self.page.get_margins_and_usable_size()"""
 
+
 class SourcePage(Page):
     pass
+
 
 class FinalSheetSpread(NamedTuple):
     left: int

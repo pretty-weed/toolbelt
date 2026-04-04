@@ -339,7 +339,7 @@ The values for width, height and the margins are expressed in the given unit for
 
 example: newDocument(PAPER_A4, (10, 10, 20, 20), LANDSCAPE, 7, UNIT_POINTS, PAGE_4, 3, 1)
 
-May raise ScribusError if is firstPageOrder bigger than allowed by pagesType. 
+May raise ScribusError if is firstPageOrder bigger than allowed by pagesType.
 """
 
 def newDocDialog() -> bool: ...  # TODO need to fill in return
@@ -364,28 +364,28 @@ newDocument.__doc__ = """newDocument(...)
             can use predefined constants named PAPER_<paper_type> e.g. PAPER_A4 etc.
         margins = A tuple (left, right, top, bottom) describing the document margins
         orientation = the page orientation - constants PORTRAIT, LANDSCAPE
-        firstPageNumer = is the number of the first page in the document used 
+        firstPageNumer = is the number of the first page in the document used
             for pagenumbering. While you'll usually want 1, it's useful to have
             higher numbers if you're creating a document in several parts.
         unit: this value sets the measurement units used by the document. Use a
             predefined constant for this, one of: UNIT_INCHES, UNIT_MILLIMETERS,
             UNIT_PICAS, UNIT_POINTS.
-        pagesType = One of the predefined constants PAGE_n. 
-            PAGE_1 is single page, 
-            PAGE_2 is for facing pages documents, 
+        pagesType = One of the predefined constants PAGE_n.
+            PAGE_1 is single page,
+            PAGE_2 is for facing pages documents,
             PAGE_3 is for 3 pages fold
             PAGE_4 is 4-fold.
-        firstPageOrder = What is position of first page in the document. 
+        firstPageOrder = What is position of first page in the document.
             Indexed from 0 (0 = first).
         numPage = Number of pages to be created.
 
-    The values for width, height and the margins are expressed in the given 
-    unit for the document. PAPER_* constants are expressed in points. If your 
-    document is not in points, make sure to account for this. Use UNIT_MM if 
-    you use PAPER_A*_MM or PAPER_B*_MM constants. PAPER_A0_MM through 
+    The values for width, height and the margins are expressed in the given
+    unit for the document. PAPER_* constants are expressed in points. If your
+    document is not in points, make sure to account for this. Use UNIT_MM if
+    you use PAPER_A*_MM or PAPER_B*_MM constants. PAPER_A0_MM through
     PAPER_A9_MM and PAPER_B0_MM through PAPER_B10_MM are available.
 
-    example: 
+    example:
     ```
     newDocument(PAPER_A4, (10, 10, 20, 20), LANDSCAPE, 7, UNIT_POINTS, PAGE_4, 3, 1)
     ```

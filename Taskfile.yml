@@ -7,7 +7,7 @@ includes:
   py-cache:
     # This is what I would use for another repo:
     # taskfile: 'https://raw.githubusercontent.com/pretty-weed/toolbelt/refs/heads/main/task/cache_python_deps/Taskfile.yml'
-    taskfile: 'task/cache_python_deps/Taskfile.yml'  
+    taskfile: 'task/cache_python_deps/Taskfile.yml'
     vars:
       WHEEL_CACHE: '{{ .WHEEL_CACHE | default "local" }}'
 
@@ -19,7 +19,7 @@ vars:
   ALL_EXTRAS:
     sh: python3 -c "import tomllib, pathlib;print(','.join(tomllib.loads(pathlib.Path('pyproject.toml').read_text()).get('project', {}).get('optional-dependencies', {}).keys()))"
   EXTRAS:
-    ref: splitList "," .ALL_EXTRAS 
+    ref: splitList "," .ALL_EXTRAS
   CACHED_INSTALL_FLAGS: '--find-links=file:{{ .CACHE_DIR }} {{ if .OFFLINE }}--no-index{{ end }}'
   OFFLINE: '{{ .OFFLINE | default "" }}'
   DOCKER_TAG_REPO: '{{ .CONTAINER_TAG | default "dd-toolbelt" }}'
@@ -68,9 +68,9 @@ tasks:
       - docker/testme/**
     cmds:
       - >
-        docker buildx build . --file docker/testme/Dockerfile 
-        --build-arg "BASE_REPO={{ .FROM_REPO }}" 
-        --build-arg "BASE_VERSION={{ .FROM_TAG }}" 
+        docker buildx build . --file docker/testme/Dockerfile
+        --build-arg "BASE_REPO={{ .FROM_REPO }}"
+        --build-arg "BASE_VERSION={{ .FROM_TAG }}"
         --build-arg "WORKING_COPY_DIR={{ .CONTAINER_WORKING_COPY_DIR }}"
         --tag {{ .TAG }}:latest {{ .CLI_ARGS }}
 
@@ -87,7 +87,7 @@ tasks:
 
   cache-deps:
     preconditions:
-      - cmd: exit 12 
+      - cmd: exit 12
         msg: "importlib_metadata must be installed in the current python env"
     vars:
       BUILD_DEPS: "setuptools setuptools-scm wheel"

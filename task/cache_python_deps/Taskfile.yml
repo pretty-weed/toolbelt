@@ -19,7 +19,7 @@ tasks:
       boop: doop
       EXISTS_ACTION: '{{.EA | default "s"}}'
     requires:
-      vars: 
+      vars:
         - name: EXISTS_ACTION
           # "switch", "ignore", "wipe", "backup", "abort"
           enum: [ "s", "i", "w", "b", "a"]
@@ -31,10 +31,9 @@ tasks:
       PYTHON: '{{ .PYTHON | default "python3" }}'
       PIP_ARGS: '{{ .PIP_ARGS | default "" }}'
     requires:
-      vars: 
+      vars:
         - name: PACKAGES
         - name: EXISTS_ACTION
           enum: ["switch", "ignore", "wipe", "backup", "abort", "s", "i", "w", "b", "a"]
     cmds:
       - '{{ .PYTHON }} -m pip {{ .PIP_ARGS }} download --check-build-dependencies --exists-action={{ .EXISTS_ACTION }} --dest={{ .CACHE_DIR }} {{ .PACKAGES }}'
-

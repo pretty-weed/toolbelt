@@ -17,14 +17,14 @@ tasks:
       - sudo rm -rf /usr/share/scribus/scripts/__pycache__
       - sudo /usr/bin/python3 -m pip install'
       - sudo rm -rf ./build
-    
+
   clean-pycache:
     interactive: true
     requires:
       vars:
         - INSTALL_BASE
-    cmds: 
-      - | 
+    cmds:
+      - |
         for fname in $(find {{ .INSTALL_BASE }} -name __pycache__); do
         test -e $fname && echo rm -rf $fname
         done
@@ -80,4 +80,3 @@ tasks:
       - task: run-script-headless
         vars:
           SCRIPT: '{{ .ROOT_DIR }}/scripts/help_script.py'
-

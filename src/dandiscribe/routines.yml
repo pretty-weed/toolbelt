@@ -2,7 +2,7 @@
 "Reset Kitchen":
   routine_time:
     weekdays: [0]
-    time_of_day: morning 
+    time_of_day: morning
 
 Mop:
   routine_time:
@@ -34,7 +34,7 @@ Therapy:
 #sample_every_am:
 #  routine_time:
 #    time_of_day: morning
-Memorial Ground Blessing: 
+Memorial Ground Blessing:
   due: "2025-10-24T13:00:00"
   duration: "2h"
 graduate:

@@ -139,7 +139,7 @@ class ParagraphStyle:
     gap_after: int = 0
     first_indent: int = 0
     has_drop_cap: bool = False
-    drop_cap_lines: int  | None = None
+    drop_cap_lines: int | None = None
     drop_cap_offset: int | None = None
     char_style: TextStyle | None = None
 

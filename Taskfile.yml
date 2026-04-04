@@ -1,5 +1,16 @@
 version: "3"
 
+includes:
+  scribus:
+    taskfile: "task/scribus/Taskfile.yml"
+
+  py-cache:
+    # This is what I would use for another repo:
+    # taskfile: 'https://raw.githubusercontent.com/pretty-weed/toolbelt/refs/heads/main/task/cache_python_deps/Taskfile.yml'
+    taskfile: 'task/cache_python_deps/Taskfile.yml'  
+    vars:
+      WHEEL_CACHE: '{{ .WHEEL_CACHE | default "local" }}'
+
 vars:
   CURRENT_OS_REPO:
     sh: lsb_release --id --short || echo "ubuntu"
@@ -9,6 +20,8 @@ vars:
     sh: python3 -c "import tomllib, pathlib;print(','.join(tomllib.loads(pathlib.Path('pyproject.toml').read_text()).get('project', {}).get('optional-dependencies', {}).keys()))"
   EXTRAS:
     ref: splitList "," .ALL_EXTRAS 
+  CACHED_INSTALL_FLAGS: '--find-links=file:{{ .CACHE_DIR }} {{ if .OFFLINE }}--no-index{{ end }}'
+  OFFLINE: '{{ .OFFLINE | default "" }}'
   DOCKER_TAG_REPO: '{{ .CONTAINER_TAG | default "dd-toolbelt" }}'
   CONTAINER_WORKING_COPY_DIR: /tmp/working_copy
 
@@ -22,15 +35,6 @@ vars:
       (test -n "${bin_path}" && echo "${bin_path}") || (echo "${bin_path} does not exist! && exit 2")
 
 
-includes:
-
-  py-cache:
-    # This is what I would use for another repo:
-    # taskfile: 'https://raw.githubusercontent.com/pretty-weed/toolbelt/refs/heads/main/task/cache_python_deps/Taskfile.yml'
-    taskfile: 'task/cache_python_deps/Taskfile.yml'  
-    vars:
-      WHEEL_CACHE: '{{ .WHEEL_CACHE | default "local" }}'
-
 tasks:
   default:
     cmds:
@@ -41,6 +45,17 @@ tasks:
         cmd: 'echo {{ .py_cache.CACHE_DIR}} or {{ .CACHE_DIR}}'
       - echo {{ .ALL_EXTRAS }}
       - echo {{ .EXTRAS }}
+
+  clean-scribus-pycache:
+    vars:
+      INSTALL_BASE:
+        sh: "pip show -f danditools | grep '^Location' | sed 's;Location: ;;'"
+
+    cmds:
+      - task: scribus:clean-pycache
+        vars:
+          INSTALL_BASE: '{{ .INSTALL_BASE }}'
+
 
   build-test-container:
     aliases: ["build-container"]
@@ -84,34 +99,28 @@ tasks:
           PACKAGES: '{{ .ROOT_DIR }}{{ .ITEM }} {{ .BUILD_DEPS }}'
 
   install:
+    aliases: ["I"]
     vars:
       PACKAGE: '.'
-      OFFLINE: '{{ .OFFLINE | default "" }}'
     preconditions:
       # I would do this with requires:{vars:{name: enum:}} but that doesn't support a ref it seems
       - cmd: ":" # TODO, fail if package is not a valid EXTRA
     cmds:
       # always do an editable install, as that caches the github dep
-      - 'pip install --find-links=file:{{ .CACHE_DIR }} {{ if .OFFLINE }}--no-index{{ end }} -e {{ .PACKAGE }}'
+      # ToDo: Make editable optional
+      - 'pip install {{ .CACHED_INSTALL_FLAGS }} -e {{ .PACKAGE }}'
 
-  scribus-install:
-    aliases: ["scribus"]
-    interactive: true
-    vars:
-      TARGET: '{{ .CLI_ARGS | default "." }}'
+  install-offline:
+    # ToDo: handle github with cached
+    aliases: ["offline-install", "Io"]
     cmds:
-      - sudo find /usr/share/scribus/scripts/dandi* -name __pycache__ -exec rm -rf {} \; || true
-      - sudo rm -rf /usr/share/scribus/scripts/__pycache__
-      - sudo /usr/bin/python3 -m pip install '{{ .TARGET }}' --upgrade --target '/usr/share/scribus/scripts/'
-      - sudo rm -rf ./build
-    
-  clean-scribus-pycache:
-    interactive: true
-    cmds: 
-      - | 
-        for fname in $(find /usr/share/scribus/scripts/ -name __pycache__); do
-        test -e $fname && sudo rm -rf $fname
-        done
+      - task: install
+        vars: {"OFFLINE": "darnTootin"}
+
+  install-brute:
+    aliases: ["brute-install", "Ib"]
+    cmds:
+      - 'pip wheel {{ .CACHED_INSTALL_FLAGS }} --no-deps {{ .ROOT_DIR}}'
 
   generate-stubs:
     aliases:
@@ -120,6 +129,7 @@ tasks:
       STUB_DIR: type_stubs
     cmds:
       - stubgen --package danditools --package dandiscribe --output {{ .STUB_DIR }} {{ .CLI_ARGS }}
+      - black {{ .STUB_DIR }}
 
   install-shell-scripts:
     aliases:

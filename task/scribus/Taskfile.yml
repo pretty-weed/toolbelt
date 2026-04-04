@@ -1,0 +1,83 @@
+version: "3"
+vars:
+  SCRIBUS_CMD: 'scribus'
+  VIRTUAL_ENV: '{{ .VIRTUAL_ENV | default ".venv" }}'
+  ACTIVATE: 'source {{.VIRTUAL_ENV}}/bin/activate; '
+  PYTHON: '{{ .PYTHON_EXE | default "python3" }}'
+  INSTALL_BASE_CMD: "pip show -f danditools | grep '^Location' | sed 's;Location: ;;'"
+
+tasks:
+  install:
+    aliases: ["scribus-install"]
+    interactive: true
+    vars:
+      TARGET: '{{ .CLI_ARGS | default "." }}'
+    cmds:
+      - sudo find /usr/share/scribus/scripts/dandi* -name __pycache__ -exec rm -rf {} \; || true
+      - sudo rm -rf /usr/share/scribus/scripts/__pycache__
+      - sudo /usr/bin/python3 -m pip install'
+      - sudo rm -rf ./build
+    
+  clean-pycache:
+    interactive: true
+    requires:
+      vars:
+        - INSTALL_BASE
+    cmds: 
+      - | 
+        for fname in $(find {{ .INSTALL_BASE }} -name __pycache__); do
+        test -e $fname && echo rm -rf $fname
+        done
+
+  create-venv:
+    aliases: ["venv", "virtualenv"]
+    internal: true
+    vars:
+      VENV_CMD: '{{ .VIRTUALENV_CMD | default "virtualenv" }}'
+    status:
+      - test -z "{{ .VIRTUAL_ENV }}"
+      - test -d '{{ .VIRTUAL_ENV }}'
+    cmds:
+      - '{{ .VENV_CMD }} {{ .VIRTUAL_ENV }}'
+
+  run-script:
+    deps:
+      - create-venv
+    vars:
+      SCRIBUS_GUI: '{{ .SCRIBUS_GUI | default "" }}'
+      SCRIBUS_SPLASH: '{{ .SCRIBUS_SPLASH | default "" }}'
+      SCRIBUS_CMD_ARGS: >-
+        {{ if .SCRIBUS_GUI }}{{ else }} -g{{ end }}
+        {{ if .SCRIBUS_SPLASH }}{{ else }} -ns{{ end }}
+      SCRIPT: &SCRIPTVAR '{{ .SCRIPT | default "" }}'
+    preconditions:
+      - 'test -n "{{ .CLI_ARGS }}"'
+    cmds:
+      - '{{ .ACTIVATE }}{{ .SCRIBUS_CMD }} {{.SCRIBUS_CMD_ARGS }} -py {{ .SCRIPT }} {{ .CLI_ARGS }}'
+
+  run-script-headless:
+    aliases: ["run-headless", "run-hdls"]
+    vars: &SCRIPTVARS
+      SCRIPT: *SCRIPTVAR
+    cmds:
+      - task: run-script
+        vars:
+          SCRIBUS_GUI: ""
+          SCRIPT: '{{ .SCRIPT }}'
+
+  run-script-gui:
+    aliases: ["run-gui"]
+    vars: *SCRIPTVARS
+    cmds:
+      - task: run-script
+        vars:
+          SCRIBUS_GUI: "yup"
+          SCRIPT: '{{ .SCRIPT }}'
+
+  help:
+    aliases: ["scripter-help"]
+    cmds:
+      - task: run-script-headless
+        vars:
+          SCRIPT: '{{ .ROOT_DIR }}/scripts/help_script.py'
+

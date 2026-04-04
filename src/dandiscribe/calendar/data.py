@@ -8,8 +8,8 @@ from enum import Enum
 from functools import cache
 from logging import getLogger, INFO
 from os import getenv
-from pathlib import Path
-from typing import Optional, Any, NamedTuple, Self
+from pathlib import Path, PurePath
+from typing import Any, Iterator, NamedTuple, Union
 from urllib.parse import urlparse, ParseResult
 
 import icalendar
@@ -315,23 +315,22 @@ class TIME_OF_DAY(Enum):
         return self.start <= time and time_end < self.end
 
 
-@dataclass
-class RoutineTime:
+class RoutineTime(NamedTuple):
     weekdays: frozenset[int]
     time_of_day: TIME_OF_DAY | time
     weeks: frozenset[int] | None = None
+    start: datetime.date | None = None
+    end: datetime.date | None = None
 
     @classmethod
     def load(cls, in_dict):
         in_dict = dict(
-            (k.lower(), v)
-            for k, v in in_dict.items()
-            if k in cls.__dataclass_fields__
+            (k.lower(), v) for k, v in in_dict.items() if k in cls._fields
         )
         if "weekdays" in in_dict:
-            in_dict["weekdays"] = frozenset(in_dict["weekdays"])
+            in_dict["weekdays"] = frozenset(int(v) for v in in_dict["weekdays"])
         if "weeks" in in_dict:
-            in_dict["weeks"] = frozenset(in_dict["weeks"])
+            in_dict["weeks"] = frozenset(int(v) for v in in_dict["weeks"])
         if "time_of_day" in in_dict:
             try:
                 in_dict["time_of_day"] = TIME_OF_DAY[
@@ -341,6 +340,10 @@ class RoutineTime:
                 in_dict["time_of_day"] = time.fromisoformat(
                     in_dict["time_of_day"]
                 )
+
+        for param in ["start", "end"]:
+            if param in in_dict:
+                in_dict[param] = datetime.date.fromisoformat(in_dict[param])
 
         return cls(
             **(
@@ -497,6 +500,10 @@ def get_tasks(
     if remove_routine:
         tasks = [task for task in tasks if not task.routine_time]
     for task in tasks:
+        if (task.start is not None and task.start > date) or (
+            task.end is not None and task.end < date
+        ):
+            continue
         if task.day == date.weekday() and (
             (time_of_day is None) or (task in time_of_day)
         ):

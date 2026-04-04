@@ -105,9 +105,9 @@ scraper = "danditools.scraper:main"
 xrandr-parse = "danditools.xrandr_parse:main"
 blog-combine = "danditools.blog_combine:main"
 cleanup-transcript = "danditools.cleanup_transcript:main"
+cat-html = "danditools.cat_html:main"
 pdf-split = "danditools.pdf:split"
 pdf-demo = "danditools.pdf:demo"
-
 
 [tool.setuptools_scm]
 

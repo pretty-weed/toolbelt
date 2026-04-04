@@ -4,6 +4,7 @@ includes:
   scribus:
     taskfile: "task/scribus/Taskfile.yml"
 
+
   py-cache:
     # This is what I would use for another repo:
     # taskfile: 'https://raw.githubusercontent.com/pretty-weed/toolbelt/refs/heads/main/task/cache_python_deps/Taskfile.yml'
@@ -31,12 +32,21 @@ vars:
       for test_path in $(echo $PATH | tr ":" "\n"); do
       [[ "${test_path}" == $HOME/*bin ]] && bin_path="${test_path}" || :
       done
-      echo "${bin_path}"
-      (test -n "${bin_path}" && echo "${bin_path}") || (echo "${bin_path} does not exist! && exit 2")
+      test -n "${bin_path}" && echo "${bin_path}"F
 
+  TOOLBELT_TASK_REF: '{{ .TOOLBELT_TASK_REF | default "main"}}'
+  TOOLBELT_TASK_PATH: '{{ .TOOLBELT_TASK_PATH | default "task"}}'
 
 tasks:
-  default:
+  cache-deps-example:
+    run: once
+    help: example of how to do this.
+    includes:
+      this-but-remote: https://raw.githubusercontent.com/pretty-weed/toolbelt/{{ .TOOLBELT_TASK_REF }}{{ .TOOLBELT_TASK_PATH}}/Taskfile.yml
+
+
+  scribus-install:
+    interactive: true
     cmds:
       - for: ["LOCAL", "USER", "GLOBAL", ".my-cool-cache"]
         task: py-cache:default

@@ -1,4 +1,5 @@
 from dandiscribe.enums import HAlign as HAlign, VAlign as VAlign
+from dandy_lib.datatypes.twodee import Coord as Coord, Rect as _Rect
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import NamedTuple
@@ -7,6 +8,9 @@ from typing import NamedTuple
 class Align:
     vertical: VAlign = ...
     horizontal: HAlign = ...
+
+class Rect(_Rect):
+    def create(self, offset: Coord = ..., name: str = "") -> str: ...
 
 class Margins(NamedTuple):
     top: float

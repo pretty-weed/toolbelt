@@ -528,7 +528,7 @@ def createRect(
     y: float | int,
     width: float | int,
     height: float | int,
-    name: str | None,
+    name: str = "",
 ) -> str: ...
 
 # =======

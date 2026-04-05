@@ -1,12 +1,7 @@
 from _typeshed import Incomplete
 from collections.abc import Generator
 from contextlib import contextmanager
-from dandy_lib.datatypes.numeric import (
-    NonNegFloat as NonNegFloat,
-    NonNegInt as NonNegInt,
-    NonNegNum as NonNegNum,
-)
-from dandy_lib.datatypes.twodee import Rect
+from dandiscribe.data import Rect as Rect
 from numpy import array as array, matrix as matrix
 from types import TracebackType
 from typing import NamedTuple

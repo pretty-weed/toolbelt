@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from logging import getLogger
-from typing import Callable, ClassVar
+from typing import Any, Callable, ClassVar, NamedTuple
 
 import scribus
 
@@ -51,7 +51,7 @@ class Box:
         if pre_fill_max_lines is None:
             pre_fill_max_lines = self.pre_fill_max_lines
         draw_master = master is None or bool(master)
-        objects = []
+        objects: list[str] = []
         row_height = height // (self.rows)
         sub_row_height = row_height // self.sub_rows
         cb = Checkbox(
@@ -104,7 +104,10 @@ class Box:
                             sub_row_y + sub_row_height,
                         )
                         objects.append(sub_line)
-                        scribus.setLineStyle(self.sub_row_style.style, sub_line)
+                        if self.sub_row_style.style is not None:
+                            scribus.setLineStyle(
+                                self.sub_row_style.style, sub_line
+                            )
                         scribus.setLineWidth(
                             self.sub_row_style.weight, sub_line
                         )

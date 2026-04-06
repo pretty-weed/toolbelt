@@ -18,3 +18,7 @@ class WrongPageError(Exception):
         msg: str | None = None,
         **extra,
     ) -> None: ...
+
+class NoSuchMasterPage(Exception):
+    name: Incomplete
+    def __init__(name: str) -> None: ...

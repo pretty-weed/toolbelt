@@ -1,3 +1,8 @@
+"""
+ToDo:
+    * Check for positional-only
+"""
+
 from types import CapsuleType
 from typing import Any, Callable, Self, SupportsIndex, override
 from warnings import deprecated
@@ -245,6 +250,7 @@ class WrongFrameTypeError(Exception): ...
 # tuples
 # =======
 
+# The `PAPER_[A-Z]+` constants are expressed in points
 PAPER_A0: tuple[float, float]
 PAPER_A0_MM: tuple[float, float]
 PAPER_A1: tuple[float, float]
@@ -1001,8 +1007,21 @@ def stringValueToPoints() -> Any: ...  # TODO fill in return
 def textOverflows() -> Any: ...  # TODO fill in return
 def unGroupObjects() -> Any: ...  # TODO fill in return
 def unlinkTextFrames() -> Any: ...  # TODO fill in return
-def valueDialog() -> Any: ...  # TODO fill in return
-def zoomDocument(double: float) -> Any: ...  # TODO fill in return
+def valueDialog(caption: str, message: str, defaultvalue: str = "") -> str:
+    """
+    Shows the common 'Ask for string' dialog and returns its value as a string
+    Parameters: window title, text in the window and optional 'default' value.
+
+    Example: valueDialog('title', 'text in the window', 'optional')
+    """
+    ...
+
+def zoomDocument(zoom: float) -> None:
+    """
+    Zoom the document in main GUI window. Actions have whole number values like
+    20.0, 100.0, etc. Zoom to Fit uses -100 as a marker.
+    """
+    ...
 
 # =======
 # <class 'float'>s

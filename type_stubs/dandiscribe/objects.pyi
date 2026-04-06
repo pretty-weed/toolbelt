@@ -13,14 +13,9 @@ from dandiscribe.util import (
 )
 from dandy_lib.datatypes.twodee import Size
 from dataclasses import dataclass, field
-from typing import Callable, ClassVar, NamedTuple
+from typing import Callable, ClassVar
 
 logger: Incomplete
-
-class ScribusItem(NamedTuple):
-    name: str
-    item_type: int
-    order: int
 
 @dataclass
 class Box:

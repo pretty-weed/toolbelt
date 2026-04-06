@@ -1,16 +1,26 @@
-from dandiscribe.enums import HAlign as HAlign, VAlign as VAlign
-from dandy_lib.datatypes.twodee import Coord as Coord, Rect as _Rect
+from dandiscribe.enums import HAlign as HAlign, Unit as Unit, VAlign as VAlign
+from dandy_lib.datatypes.tuples import MixableNamedTuple
+from dandy_lib.datatypes.twodee import (
+    Coord as Coord,
+    Rect as _Rect,
+    Size as _Size,
+)
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import NamedTuple
+from typing import NamedTuple, Self
 
 @dataclass
 class Align:
     vertical: VAlign = ...
     horizontal: HAlign = ...
 
-class Rect(_Rect):
+class Rect(MixableNamedTuple, _Rect):
     def create(self, offset: Coord = ..., name: str = "") -> str: ...
+
+class Size(MixableNamedTuple, _Size):
+    unit: Unit
+    def as_points(self) -> Self: ...
+    def as_unit(self, unit: Unit) -> Self: ...
 
 class Margins(NamedTuple):
     top: float

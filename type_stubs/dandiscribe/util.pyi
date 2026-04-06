@@ -3,8 +3,11 @@ from annotated_types import T as T
 from collections.abc import Generator
 from contextlib import contextmanager
 from dandiscribe.data import Rect as Rect
-from dandiscribe.exceptions import WrongPageError as WrongPageError
-from dandiscribe.objects import ScribusItem as ScribusItem
+from dandiscribe.exceptions import (
+    NoSuchMasterPage as NoSuchMasterPage,
+    WrongPageError as WrongPageError,
+)
+from dandiscribe.scribus_data import ScribusItem as ScribusItem
 from numpy import array as array, matrix as matrix
 from types import TracebackType
 from typing import Generic, NamedTuple, TypeVar
@@ -55,6 +58,15 @@ class TempGoToBase(Generic[Tmp]):
 
 class TempGoto(TempGoToBase[int]): ...
 class TempGoToMaster(TempGoToBase[str]): ...
+
+class EditMaster:
+    stack: list[str]
+    name: Incomplete
+    def __init__(self, name: str, create: bool = False) -> None: ...
+    def __enter__(self) -> str: ...
+    def __exit__(
+        self, type: type[Exception], value: Exception, traceback: TracebackType
+    ): ...
 
 IGNORED: Incomplete
 

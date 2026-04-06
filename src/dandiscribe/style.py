@@ -1,15 +1,17 @@
 from dataclasses import dataclass, field
-from typing import Optional, ClassVar
+from typing import Annotated, ClassVar, TypeAlias
 import scribus
 
-from dandy_lib.datatypes.numeric import bounded_int_factory, NonNegInt
+from annotated_types import Ge, Le
+
+from dandy_lib.datatypes.numeric import NonNegInt
 
 import dandiscribe.colors
 import dandiscribe.enums as enums
 from dandiscribe.util import ok_to_ignore_dialog
 
-ZeroToOnehundredInt = bounded_int_factory(0, 100)
-FullIntensity = ZeroToOnehundredInt(100)
+ZeroToOneHundredInt: TypeAlias = Annotated[int, Ge(0), Le(100)]
+FullIntensity: ZeroToOneHundredInt = int(100)
 
 
 @dataclass(frozen=True)
@@ -30,11 +32,11 @@ TwoPointBlackLine = LineStyle(weight=2, style=1)
 @dataclass
 class FillStyle:
     color: dandiscribe.colors.COLORS
-    shade: ZeroToOnehundredInt = FullIntensity
+    shade: ZeroToOneHundredInt = FullIntensity
 
-    def __post_init__(self, shade: ZeroToOnehundredInt = FullIntensity):
+    def __post_init__(self, shade: ZeroToOneHundredInt = FullIntensity):
         # check this
-        ZeroToOnehundredInt(self.shade)
+        ZeroToOneHundredInt(self.shade)
 
 
 NO_FILL = FillStyle(color=enums.COLORS.NONE)

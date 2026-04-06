@@ -1,16 +1,54 @@
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Iterator, NamedTuple, Union
+from typing import NamedTuple, Self
 
+from dandy_lib.datatypes.tuples import MixableNamedTuple
 import scribus
 
-from dandiscribe.enums import HAlign, VAlign
+from dandy_lib.datatypes.twodee import (
+    Coord,
+    Rect as _Rect,
+    Size as _Size,
+    ZERO_COORD,
+)
+
+from dandiscribe.enums import HAlign, Unit, VAlign
 
 
 @dataclass
 class Align:
     vertical: VAlign = VAlign.TOP
     horizontal: HAlign = HAlign.LEFT
+
+
+class Rect(MixableNamedTuple, _Rect):
+    def create(self, offset: Coord = ZERO_COORD, name: str = "") -> str:
+        if name:
+            name_arg = [
+                name,
+            ]
+        else:
+            name_arg = []
+        return scribus.createRect(
+            self.x + offset.x,
+            self.y + offset.y,
+            self.width,
+            self.height,
+            *name_arg,
+        )
+
+
+class Size(MixableNamedTuple, _Size):
+    unit: Unit = Unit.POINTS
+
+    def as_points(self) -> Self:
+        return self.as_unit(Unit.POINTS)
+
+    def as_unit(self, unit: Unit) -> Self:
+        multiplier: float = self.unit @ Unit.POINTS
+        return self.__class__(
+            self.x * multiplier, self.y * multiplier, Unit.POINTS
+        )
 
 
 class Margins(NamedTuple):

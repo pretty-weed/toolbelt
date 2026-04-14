@@ -1,10 +1,13 @@
+from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import NamedTuple, Self
+from turtle import heading
+from typing import Any, Literal, NamedTuple, Self, override
 
 from dandy_lib.datatypes.tuples import MixableNamedTuple
 import scribus
 
+from dandy_lib.datatypes.numeric import NonNegNum
 from dandy_lib.datatypes.twodee import (
     Coord,
     Rect as _Rect,
@@ -32,23 +35,53 @@ class Rect(MixableNamedTuple, _Rect):
         return scribus.createRect(
             self.x + offset.x,
             self.y + offset.y,
-            self.width,
-            self.height,
+            scribus.pointsToDocUnit(self.size.as_points().width),
+            scribus.pointsToDocUnit(self.size.as_points().height),
             *name_arg,
         )
+
+    @override
+    def __str__(self) -> str:
+        conv_part = ""
+        if self.unit is not Unit.INCHES:
+            conv_part = f' ({self.width * (self.unit @ Unit.INCHES)}", {self.height * (self.unit@Unit.INCHES)})"'
+        return f"Rect(position=Coord(x={self.x}, y={self.y}), size=Size(width={self.width}, height={self.height}){conv_part}, unit={self.unit.name})"
 
 
 class Size(MixableNamedTuple, _Size):
     unit: Unit = Unit.POINTS
 
+    @override
+    @classmethod
+    def factory(cls, *in_vals: NonNegNum, unit: Unit = Unit.POINTS) -> Self:
+        if len(in_vals) == 1:
+            in_vals *= 2
+        return cls(*in_vals, unit)
+
     def as_points(self) -> Self:
         return self.as_unit(Unit.POINTS)
 
+    def for_scribus(self, unit=None) -> tuple[float, float]:
+        if unit is None or unit is self.unit:
+            return (self.width, self.height)
+        conversion_factor: float = self.unit @ unit
+        return (self.width * conversion_factor, self.height * conversion_factor)
+
     def as_unit(self, unit: Unit) -> Self:
-        multiplier: float = self.unit @ Unit.POINTS
+        multiplier: float = self.unit @ unit
         return self.__class__(
-            self.x * multiplier, self.y * multiplier, Unit.POINTS
+            self.width * multiplier, self.height * multiplier, unit
         )
+
+    def __len__(self) -> Literal[2]:
+        return 2
+
+    def __iter__(self) -> Iterable[NonNegNum]:
+        yield self.width
+        yield self.height
+
+
+assert len(list(Size(1, 3))) == 2
 
 
 class Margins(NamedTuple):

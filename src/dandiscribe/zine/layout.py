@@ -5,17 +5,21 @@ import logging
 from logging import handlers
 from os import getenv
 from pathlib import Path
-from typing import Annotated, Callable, NamedTuple, Self
+import sys
+from typing import Annotated, Any, Callable, NamedTuple, Self
 from warnings import warn
 
-from dandiscribe.enums import PAGESIDE
-from dandiscribe.util import copy_items, CopyDest, CopySrc
+
 from dandy_lib.annotations import DivisibleBy
+from dandy_lib.cli.enums import ChoiceEnumMixin, ChoiceEnumMeta
 from dandy_lib.datatypes.tuples import MixableNamedTuple
-from dandy_lib.datatypes.twodee import Coord, Rect, Size
+from dandy_lib.datatypes.twodee import Coord
+
+from dandiscribe.enums import PAGESIDE, Unit
+from dandiscribe.util import copy_items, CopyDest, CopySrc
 import scribus
 
-from dandiscribe.data import Margins
+from dandiscribe.data import Margins, Rect, Size
 from dandiscribe.exceptions import NewDocError, NoObjects
 from dandiscribe.layout import Document, Page, PAPER_LETTER
 
@@ -30,10 +34,6 @@ LOG_FILE = Path(
 
 LOGGER = logging.getLogger(__name__)
 
-print(f"log dir `{LOG_DIR}`")
-
-print(f"log path `{LOG_FILE}`")
-import sys
 
 # ToRemove
 LOGGER.setLevel(logging.DEBUG)
@@ -47,54 +47,43 @@ def default_suffixer(filename: str | Path) -> Path:
     return fpath.with_stem(f"{fpath.stem}-print")
 
 
-class LayoutVal(int):
-    def __new__(
-        cls,
+class LayoutVal:
+    def __init__(
+        self,
         val: int,
         rows: int,
         cols: int,
         orientation: int = scribus.LANDSCAPE,
-    ):
-        res = super().__new__(cls, val)
-        res.val = val
-        res.rows = rows
-        res.cols = cols
-        res.orientation = orientation
-        return res
+    ) -> None:
+        self.val: int = val
+        self.rows: int = rows
+        self.cols: int = cols
+        self.orientation: int = orientation
+        super().__init__()
+
+    def __int__(self) -> int:
+        return self.val
+
+    def get_enum_tuple(self) -> tuple[int, int, int, int]:
+        return (self.val, self.rows, self.cols, self.orientation)
 
 
-class Layout(Enum):
-    EIGHT_PAGE_MINI = LayoutVal(8, 2, 4)
-    QUARTER = LayoutVal(4, 2, 2)
-    HALF = LayoutVal(2, 1, 2)
+class Layout(ChoiceEnumMixin, LayoutVal, Enum, metaclass=ChoiceEnumMeta):
+    EIGHT_PAGE_MINI = (8, 2, 4)
+    QUARTER = (4, 2, 2)
+    HALF = (2, 1, 2)
 
     def __mul__(self: Self, other) -> int:
-        return self.value.val * other
+        return self.val * other
 
     def __add__(self: Self, other) -> int:
-        return self.value.val + other
+        return self.val + other
 
     def __floordiv__(self: Self, other) -> int:
-        return self.value.val // other
+        return self.val // other
 
     def __rfloordiv__(self: Self, other) -> int:
-        return self.value.val // other
-
-    @property
-    def cols(self) -> int:
-        return self.value.cols
-
-    @property
-    def rows(self) -> int:
-        return self.value.rows
-
-    @property
-    def val(self) -> int:
-        return self.value.val
-
-    @property
-    def orientation(self) -> int:
-        return self.value.orientation
+        return self.val // other
 
 
 class PrintPage(MixableNamedTuple, Page):
@@ -136,18 +125,37 @@ class FinalSheetSpread(NamedTuple):
         dest_page: PrintPage,
         rect: Rect,
         dest_doc: str | None = None,
-        scale: float | None = None,
         source_rect: Rect | None = None,
         debug_rects: bool = True,
     ) -> tuple[str | None, str | None]:
-        if source_rect is not None:
+        if source_rect is None:
             scribus.openDoc(source)
-            source_size: tuple[float, float] = scribus.getPageNSize(self.left)
-            source_rect = Rect(Coord(0, 0), Size.factory(*source_size))
-        left_rect = Rect(rect.position, Size(rect.width / 2, rect.height))
+            source_size: tuple[float, float] = tuple[float, float](
+                scribus.docUnitToPoints(d)
+                for d in scribus.getPageNSize(self.left)
+            )
+            source_rect = Rect(
+                Coord(0, 0), Size.factory(*source_size, unit=Unit.POINTS)
+            )
+
+            LOGGER.debug(
+                "no source rect passed to FinalSheetSpread.translate(), so generated one:\n\t%s",
+                source_rect,
+            )
+        LOGGER.debug("about to generate left and right rects")
+        left_rect: Rect = Rect(
+            rect.position,
+            Size(rect.width / 2, rect.height, rect.unit).as_points(),
+        )
         right_rect: Rect = Rect(
             Coord(rect.position.x + rect.width / 2, rect.position.y),
-            left_rect.size,
+            Size(rect.width / 2, rect.height, rect.unit).as_points(),
+        )
+        LOGGER.debug(
+            "created left and right rects from center rect\nleft: %s\nright:%s\norig:%s",
+            left_rect,
+            right_rect,
+            rect,
         )
         try:
             left_group = copy_items(
@@ -156,6 +164,8 @@ class FinalSheetSpread(NamedTuple):
                     dest_doc if dest_doc is not None else source,
                     dest_page.page_number,
                 ),
+                source_box=source_rect,
+                target_box=left_rect,
                 debug_boxes=debug_rects,
             )
         except NoObjects:
@@ -167,6 +177,9 @@ class FinalSheetSpread(NamedTuple):
                     dest_doc if dest_doc is not None else source,
                     dest_page.page_number,
                 ),
+                source_box=source_rect,
+                target_box=right_rect,
+                debug_boxes=debug_rects,
             )
         except NoObjects:
             right_group = None
@@ -271,14 +284,46 @@ class FinalDoc(NamedTuple):
     layout: Layout
     signature_sheets: int = 1
     print_page_size: Size = Size(*scribus.PAPER_LETTER)
+    unit: Unit = Unit.POINTS
+
     margins: Margins = Margins(top=0.5, right=0.5, bottom=0.5, left=0.75)
 
     @property
     @lru_cache
-    def page_usable_size(self) -> Size:
+    def page_size(self) -> Size:
+        if self.layout.orientation == scribus.PORTRAIT:
+            return Size(
+                min(self.print_page_size),
+                max(self.print_page_size),
+                unit=self.unit,
+            )
         return Size(
-            self.print_page_size.width - self.margins.horizontal,
-            self.print_page_size.height - self.margins.vertical,
+            max(self.print_page_size), min(self.print_page_size), unit=self.unit
+        )
+
+    @property
+    @lru_cache
+    def page_usable_size(self) -> Size:
+        if self.unit == self.print_page_size.unit:
+            return Size(
+                self.page_size.width - self.margins.horizontal,
+                self.page_size.height - self.margins.vertical,
+                self.unit,
+            )
+        conv_factor = print_page_size.unit @ self.unit
+        return Size(
+            self.page_size.width * conv_factor - self.margins.horizontal,
+            self.page_size.height * conv_factor - self.margins.vertical,
+            self.unit,
+        )
+
+    @property
+    @lru_cache
+    def page_usable_size_pt(self) -> Size:
+        ratio: float = self.unit @ Unit.POINTS
+        return Size(
+            ratio * (self.page_size.width - self.margins.horizontal),
+            ratio * (self.page_size.height - self.margins.vertical),
         )
 
     @property
@@ -406,11 +451,13 @@ class FinalDoc(NamedTuple):
         source: str | Path | None = None,
         close_source: bool = True,
         close_final: bool = True,
+        inside_margins: bool = False,
     ):
-
+        resize_pages = False
         if source is None:
             scribus.saveDoc()
             source = scribus.getDocName()
+            resize_pages = True
         else:
             scribus.openDoc(str(source))
 
@@ -419,38 +466,41 @@ class FinalDoc(NamedTuple):
         # Ensure new_name is a path object
         new_name = Path(self.name)
         assert new_name != Path(scribus.getDocName())
-        """
-        try:
-            scribus.setPageSize(self.print_page_size)
-        except AttributeError as exc:
-            # pre 1.7 scribus
-            raise EnvironmentError(f"pre 1.7 scribus, could not resize page in script (scribus version is {scribus.SCRIBUS_VERSION_INFO})") from exc
-        """
 
         # ToDo ensure uniform page size
-        source_size: tuple[float, float] = scribus.getPageNSize(1)
-        source_unit: int = scribus.getUnit()
-
-        size_in_units = tuple(
-            scribus.pointsToDocUnit(val) for val in self.print_page_size
+        source_size_pt: Size = Size.factory(
+            *(scribus.docUnitToPoints(dim) for dim in scribus.getPageNSize(1)),
+            unit=Unit.POINTS,
         )
+        source_unit = Unit.get_current()
+        conv_factor: float = source_unit @ Unit.POINTS
 
         LOGGER.warning(get_signature_pages(source_pages, self.signature_sheets))
-        if not scribus.newDocument(
-            size_in_units,
-            self.margins,
-            self.layout.orientation,
-            1,
-            source_unit,
-            scribus.PAGE_1,
-            1,
-            self.pages,
-        ):
-            raise NewDocError()
+
+        unit: int = self.unit.const_enum
+        page_type: int = scribus.PAGE_1
+        page_count: int = self.pages
+        try:
+
+            success: bool = scribus.newDocument(
+                self.print_page_size.for_scribus(),
+                self.margins,
+                self.layout.orientation,
+                1,
+                int(self.unit),
+                scribus.PAGE_1,
+                1,
+                self.pages,
+            )
+            if not success:
+                raise NewDocError()
+        except Exception as exc:
+            LOGGER.exception(f"Exception raised when creating doc: {exc}\n")
+            raise exc
+
         scribus.setDocType(scribus.NOFACINGPAGES, scribus.FIRSTPAGELEFT)
         scribus.saveDocAs(str(new_name))
-        # upda
-        print(f"page count: {scribus.pageCount()}")
+        # update
         page_dims: dict[int, tuple[float, float]] = dict[
             int, tuple[float, float]
         ](
@@ -460,26 +510,43 @@ class FinalDoc(NamedTuple):
 
         for print_page in self.print_pages:
 
-            scribus.gotoPage(print_page.page_number)
-
-            scribus.setCurrentPageSize(
-                *[dim * scribus.inch for dim in self.print_page_size]
-            )
+            try:
+                scribus.gotoPage(print_page.page_number)
+            except IndexError as exc:
+                raise IndexError(
+                    f"Page {print_page.page_number} out of range, total pages: {scribus.pageCount()}"
+                )
+            if resize_pages:
+                LOGGER.warning("resizing pages in existing doc")
+                scribus.setCurrentPageSize(
+                    *[dim * self.unit for dim in self.print_page_size]
+                )
+            else:
+                LOGGER.info("Not resizing pages")
             col = 0
             row = 0
 
-            x: float = self.margins.left
-            y: float = self.margins.top
+            x_reset = self.margins.left * conv_factor if inside_margins else 0.0
 
-            col_width: float = float(self.page_usable_size.width / self.cols)
-            row_height: float = float(self.page_usable_size.height / self.rows)
-            spread_page_width: float = col_width / 2.0
+            x: float = x_reset
+            y: float = self.margins.top if inside_margins else 0.0
+
+            # the cols are for pages, not spreads
+            pts_size = (
+                self.page_usable_size_pt
+                if inside_margins
+                else self.page_size.as_points()
+            )
+            spread_width: float = float(pts_size.width / (self.cols // 2))
+            row_height: float = float(pts_size.height / self.rows)
 
             for spread in print_page.source_pages:
                 _ = spread.translate(
                     str(source),
                     print_page,
-                    Rect(Coord(x, y), Size(col_width, row_height)),
+                    Rect(
+                        Coord(x, y), Size(spread_width, row_height, Unit.POINTS)
+                    ),
                     self.name,
                     debug_rects=True,
                 )
@@ -487,11 +554,11 @@ class FinalDoc(NamedTuple):
                 if col == self.spread_cols - 1:
                     row += 1
                     col = 0
-                    x = self.margins.left
+                    x = x_reset
                     y += row_height
                 else:
                     col += 1
-                    x += col_width
+                    x += spread_width
 
         if close_final:
             assert scribus.getDocName() == self.name

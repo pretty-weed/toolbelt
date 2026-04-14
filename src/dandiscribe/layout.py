@@ -1,10 +1,14 @@
 from dataclasses import asdict, dataclass, field
 from functools import lru_cache
+import logging
 from os import linesep
 from typing import Any, ClassVar, Literal, NamedTuple, Self, TypeVar
 
 from dandiscribe.enums import PAGESIDE
 from dandiscribe.exceptions import InvalidSheet, NewDocError
+from dandiscribe.log import configure
+
+
 import scribus
 
 from dandy_lib.datatypes.tuples import MixableNamedTuple
@@ -12,6 +16,8 @@ from dandy_lib.datatypes.twodee import Size
 
 from dandiscribe.data import Margins
 
+
+LOGGER: logging.Logger = configure(__name__)
 
 PAPER_LETTER: Size = Size(*scribus.PAPER_LETTER)
 PAPER_A4: Size = Size(*scribus.PAPER_A4)
@@ -56,6 +62,8 @@ class Page(MixableNamedTuple):
             assert self.master_page
             if self.master_page not in scribus.masterPageNames():
                 self.make()
+            # TOREMOVE
+            raise ValueError("NO")
             scribus.editMasterPage(self.master_page)
         else:
             assert self.page_number
@@ -135,9 +143,20 @@ Doc = TypeVar("Doc", bound="Document")
 
 def get_mpage_sizes() -> dict[str, Size]:
     sizes: dict[str, Size] = {}
+    try:
+        scribus.closeMasterPage()
+    except IndexError:
+        # expected
+        pass
+    else:
+        raise EnvironmentError(
+            "Should not call get_mpage_sizes from within a master page"
+        )
+
     for mpage_name in scribus.masterPageNames():
         scribus.editMasterPage(mpage_name)
         sizes[mpage_name] = Size.factory(*scribus.getPageSize())
+        scribus.closeMasterPage()
     return sizes
 
 
@@ -148,6 +167,7 @@ class Document:
 
     @classmethod
     def from_current(cls) -> Self:
+        LOGGER.debug("Creating doc from current")
         if not scribus.haveDoc():
             raise EnvironmentError("No docs open")
         mpages: dict[str, MasterPage] = dict(

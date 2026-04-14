@@ -1,20 +1,24 @@
+import logging
 from _typeshed import Incomplete
 from annotated_types import T as T
 from collections.abc import Generator
 from contextlib import contextmanager
-from dandiscribe.data import Rect as Rect
+from dandiscribe.data import Rect as Rect, Size as Size
+from dandiscribe.enums import Unit as Unit
 from dandiscribe.exceptions import (
     NoSuchMasterPage as NoSuchMasterPage,
     WrongPageError as WrongPageError,
 )
+from dandiscribe.log import configure as configure
 from dandiscribe.scribus_data import ScribusItem as ScribusItem
+from logging import handlers as handlers
 from numpy import array as array, matrix as matrix
 from types import TracebackType
 from typing import Generic, NamedTuple, TypeVar
 
 LOG_DIR: Incomplete
 LOG_FILE: Incomplete
-LOGGER: Incomplete
+LOGGER: logging.Logger
 MISSING: Incomplete
 
 class PauseDrawing:

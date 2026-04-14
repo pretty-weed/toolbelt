@@ -8,3 +8,5 @@ build/**
 .offline_cache/
 .wheels/
 .python-version
+.task
+**.log

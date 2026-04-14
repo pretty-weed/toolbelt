@@ -1,4 +1,6 @@
+from collections.abc import Iterable
 from dandiscribe.enums import HAlign as HAlign, Unit as Unit, VAlign as VAlign
+from dandy_lib.datatypes.numeric import NonNegNum as NonNegNum
 from dandy_lib.datatypes.tuples import MixableNamedTuple
 from dandy_lib.datatypes.twodee import (
     Coord as Coord,
@@ -7,7 +9,8 @@ from dandy_lib.datatypes.twodee import (
 )
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import NamedTuple, Self
+from turtle import heading as heading
+from typing import Literal, NamedTuple, Self, override
 
 @dataclass
 class Align:
@@ -19,8 +22,14 @@ class Rect(MixableNamedTuple, _Rect):
 
 class Size(MixableNamedTuple, _Size):
     unit: Unit
+    @override
+    @classmethod
+    def factory(cls, *in_vals: NonNegNum, unit: Unit = ...) -> Self: ...
     def as_points(self) -> Self: ...
+    def for_scribus(self, unit=None) -> tuple[float, float]: ...
     def as_unit(self, unit: Unit) -> Self: ...
+    def __len__(self) -> Literal[2]: ...
+    def __iter__(self) -> Iterable[NonNegNum]: ...
 
 class Margins(NamedTuple):
     top: float

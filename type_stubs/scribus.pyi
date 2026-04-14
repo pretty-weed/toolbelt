@@ -863,7 +863,17 @@ def getTextLines() -> Any: ...  # TODO fill in return
 def getTextShade() -> Any: ...  # TODO fill in return
 def getTextVerticalAlignment() -> Any: ...  # TODO fill in return
 def getTracking() -> Any: ...  # TODO fill in return
-def getUnit() -> Any: ...  # TODO fill in return
+def getUnit() -> int:
+    """
+    Returns the measurement units of the document. The returned value will be
+    one of the UNIT_* constants:
+        * UNIT_INCHES
+        * UNIT_MILLIMETERS
+        * UNIT_PICAS
+        * UNIT_POINTS
+    """
+    ...
+
 def getVGuides() -> Any: ...  # TODO fill in return
 def getVisualBoundingBox() -> Any: ...  # TODO fill in return
 def getWordTracking() -> Any: ...  # TODO fill in return
@@ -906,7 +916,12 @@ def objectExists() -> Any: ...  # TODO fill in return
 def traceText() -> Any: ...  # TODO fill in return
 def pageCount() -> int: ...
 def placeVectorFile() -> Any: ...  # TODO fill in return
-def pointsToDocUnit() -> Any: ...  # TODO fill in return
+def pointsToDocUnit(points: float) -> float:
+    """
+    Returns a value in the measurement units of the document converted from points.
+    """
+    ...
+
 def progressReset() -> Any: ...  # TODO fill in return
 def progressSet(progress: float) -> Any: ...  # TODO fill in return
 def progressTotal() -> Any: ...  # TODO fill in return

@@ -5,6 +5,8 @@ vars:
   ACTIVATE: 'source {{.VIRTUAL_ENV}}/bin/activate; '
   PYTHON: '{{ .PYTHON_EXE | default "python3" }}'
   INSTALL_BASE_CMD: "pip show -f danditools | grep '^Location' | sed 's;Location: ;;'"
+ENV:
+  LOG_LEVEL: '{{ .LOG_LEVEL | default "DEBUG" }}'
 
 tasks:
   install:
@@ -35,7 +37,7 @@ tasks:
     vars:
       VENV_CMD: '{{ .VIRTUALENV_CMD | default "virtualenv" }}'
     status:
-      - test -z "{{ .VIRTUAL_ENV }}"
+      - test -n "{{ .VIRTUAL_ENV }}"
       - test -d '{{ .VIRTUAL_ENV }}'
     cmds:
       - '{{ .VENV_CMD }} {{ .VIRTUAL_ENV }}'

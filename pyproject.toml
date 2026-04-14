@@ -16,14 +16,15 @@ dependencies = [
     "pyyaml~=6.0",
     "platformdirs~=4.3.6",
     "pypdf~=6.1",
-    "dandy_lib@git+http://github.com/pretty-weed/py_libs@v0.10.2",
+    "texsoup~=0.3",
+    "dandy_lib@git+http://github.com/pretty-weed/py_libs@v0.12.3",
 ]
 
 [tool.setuptools.dynamic]
 readme = {file = ["README.md"], content-type = "text/markdown"}
 
 [tool.setuptools.package-data]
-dandiscribe = ["routines.yml", "fonts/OFL.txt", "fonts/*/*.ttf", "fonts/*/*.otf"]
+dandiscribe = ["routines.yml", "fonts/OFL.txt", "fonts/*/*.ttf", "fonts/*/*.otf", "source_files/*.sla"]
 
 danditools = ["type_stubs/py.typed"]
 
@@ -100,6 +101,14 @@ description = "Run linting on code base"
 extras = ["lint"]
 commands = [["black", "src"], ["black", "tests"]]
 
+[tool.pyright]
+enableTypeIgnoreComments = true
+analyzeUnannotatedFunctions = true
+reportMissingImports = "error"
+reportMissingTypeStubs = "warning"
+reportPrivateUsage = "warning"
+reportUnknownMemberType = true
+
 [project.scripts]
 scraper = "danditools.scraper:main"
 xrandr-parse = "danditools.xrandr_parse:main"
@@ -108,6 +117,7 @@ cleanup-transcript = "danditools.cleanup_transcript:main"
 cat-html = "danditools.cat_html:main"
 pdf-split = "danditools.pdf:split"
 pdf-demo = "danditools.pdf:demo"
+tex-wc = "danditex.word_count:main"
 
 [tool.setuptools_scm]
 

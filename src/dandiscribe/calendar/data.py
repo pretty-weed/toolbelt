@@ -9,7 +9,7 @@ from functools import cache
 from logging import getLogger, INFO
 from os import getenv
 from pathlib import Path, PurePath
-from typing import Any, Iterator, NamedTuple, Union
+from typing import Any, Iterator, NamedTuple, Self, Union
 from urllib.parse import urlparse, ParseResult
 
 import icalendar
@@ -137,7 +137,7 @@ class Duration(NamedTuple):
         )
         return self.start <= other_start and other_end <= self.end
 
-    def __and__(self, other):
+    def __and__(self, other: Self):
         early, late = sorted([self, other], key=lambda x: x.start)
         if early.end < late.start:
             raise ValueError(f"NO NO NO {early}, {late} ({self}, {other})")
@@ -189,7 +189,9 @@ class Event:
         return Duration(self.start, self.end)
 
     @classmethod
-    def get_from_calendars(cls, start: datetime, end: datetime) -> Iterator:
+    def get_from_calendars(
+        cls, start: datetime, end: datetime
+    ) -> Iterator[Self]:
         for event in get_events(start, end, collated=True):
             desc = event.event.get("DESCRIPTION")
             if desc and "the official Google Calendar app" in desc:

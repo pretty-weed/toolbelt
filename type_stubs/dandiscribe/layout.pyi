@@ -1,3 +1,4 @@
+import logging
 import types
 from dandiscribe.data import Margins as Margins
 from dandiscribe.enums import PAGESIDE as PAGESIDE
@@ -5,6 +6,7 @@ from dandiscribe.exceptions import (
     InvalidSheet as InvalidSheet,
     NewDocError as NewDocError,
 )
+from dandiscribe.log import configure as configure
 from dandy_lib.datatypes.tuples import MixableNamedTuple
 from dandy_lib.datatypes.twodee import Size
 from dataclasses import asdict as asdict, dataclass, field
@@ -12,6 +14,7 @@ from functools import lru_cache
 from os import linesep as linesep
 from typing import ClassVar, NamedTuple, Self, TypeVar
 
+LOGGER: logging.Logger
 PAPER_LETTER: Size
 PAPER_A4: Size
 PAPER_A5: Size

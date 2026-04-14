@@ -7,3 +7,6 @@ build/**
 .coverage
 .offline_cache/
 .wheels/
+.python-version
+.task
+**.log

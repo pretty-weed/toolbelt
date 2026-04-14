@@ -1,3 +1,8 @@
+"""
+ToDo:
+    * Check for positional-only
+"""
+
 from types import CapsuleType
 from typing import Any, Callable, Self, SupportsIndex, override
 from warnings import deprecated
@@ -245,6 +250,7 @@ class WrongFrameTypeError(Exception): ...
 # tuples
 # =======
 
+# The `PAPER_[A-Z]+` constants are expressed in points
 PAPER_A0: tuple[float, float]
 PAPER_A0_MM: tuple[float, float]
 PAPER_A1: tuple[float, float]
@@ -462,15 +468,109 @@ def setActiveLayer(layer: str) -> None: ...
 # Frame Properties
 # =======
 
-def setLineCap() -> Any: ...  # TODO fill in return
-def setLineColor() -> Any: ...  # TODO fill in return
-def setLineJoin() -> Any: ...  # TODO fill in return
-def setLineShade() -> Any: ...  # TODO fill in return
-def setLineSpacing() -> Any: ...  # TODO fill in return
-def setLineSpacingMode() -> Any: ...  # TODO fill in return
-def setLineStyle() -> Any: ...  # TODO fill in return
-def setLineTransparency() -> Any: ...  # TODO fill in return
-def setLineWidth() -> Any: ...  # TODO fill in return
+def setLineCap(endType: int, name: str = "") -> None:
+    """
+    setLineCap(endtype, ["name"])
+
+    Sets the line cap style of the object "name" to the style "cap". If "name"
+    is not given the currently selected item is used. There are predefined
+    constants for "cap" - CAP_<type>.
+
+    """
+    ...
+
+def setLineColor(color: str, name: str = "") -> None:
+    """
+    setLineColor("color", ["name"])
+
+    Sets the line color of the object "name" to the color "color". If "name" is
+    not given the currently selected item is used.
+
+    """
+    ...
+
+def setLineJoin(join: int, name: str = "") -> None:
+    """
+    setLineJoin(join, ["name"])
+
+    Sets the line join style of the object "name" to the style "join". If
+    "name" is not given the currently selected item is used. There are
+    predefined constants for join - JOIN_<type>.
+
+    """
+    ...
+
+def setLineShade(shade: int, name: str = "") -> None:
+    """
+    setLineShade(shade, ["name"])
+
+    Sets the shading of the line color of the object "name" to "shade". "shade"
+    must be an integer value in the range from 0 (lightest) to 100 (full color
+    intensity). If "name" is not given the currently selected item is used.
+
+    May raise ValueError if the line shade is out of bounds.
+    """
+    ...
+
+def setLineSpacing(size: float, name: str = "") -> None:
+    """
+    setLineSpacing(size, ["name"])
+
+    Sets the line spacing ("leading") of the text frame "name" to "size".
+    "size" is a value in points. If "name" is not given the currently selected
+    item is used.
+
+    May throw ValueError if the line spacing is out of bounds.
+    """
+    ...
+
+def setLineSpacingMode(mode: int, name: str = "") -> None:
+    """
+    setLineSpacingMode(mode, ["name"])
+
+    Sets the line spacing mode of the text frame "name" to "mode". If "name" is
+    not given the currently selected item is used. Mode values are the same as
+    in createParagraphStyle.
+
+    May throw ValueError if the mode is out of bounds.
+    possible modes are:
+        fixed linespacing:          0
+        automatic linespacing:      1
+        baseline grid linespacing:  2
+    """
+    ...
+
+def setLineStyle(style: int, name: str = "") -> None:
+    """
+    setLineStyle(style, ["name"])
+
+    Sets the line style of the object "name" to the style "style". If "name" is
+    not given the currently selected item is used. Argument for this function is
+    number - value from 1 to 37 There are few predefined constants for
+    "style" - LINE_<style>. In Property Palette this feature is selected in box
+    named 'Type of line'
+    """
+    ...
+
+def setLineTransparency(transparency: float, name: str = "") -> None:
+    """
+    setLineTransparency(transparency, ["name"])
+
+    Sets the line transparency of the object "name" to transparency If "name" is
+    not given the currently selected item is used.
+    """
+    ...
+
+def setLineWidth(width: float, name: str = "") -> None:
+    """setLineWidth(width, ["name"])
+
+    Sets line width of the object "name" to "width". "width" must be in the
+    range from 0.0 to 12.0 inclusive, and is measured in points. If "name" is
+    not given the currently selected item is used.
+
+    May raise ValueError if the line width is out of bounds.
+    """
+    ...
 
 # =======
 # # Item
@@ -507,12 +607,31 @@ def moveObjectAbs(x: float, y: float, name: str = "") -> None: ...
 # # Lines
 # =======
 
-def createBezierLine() -> Any: ...  # TODO fill in return
-def createLine() -> Any: ...  # TODO fill in return
+def createBezierLine(points: list[float], name: str = "") -> str:
+    """
+    Creates a new bezier curve and returns its name. The points for the bezier
+    curve are stored in the list "list" in the following order:
+    [x1, y1, kx1, ky1, x2, y2, kx2, ky2...xn. yn, kxn. kyn]
+
+    In the points list, x and y mean the x and y coordinates of the point
+    and kx and ky meaning the control point for the curve.
+
+    The coordinates are given in the current measurement units of the document
+    (see UNIT constants).
+
+    "name" should be a unique identifier for the object because you need this
+    name for further access to that object. If "name" is not given Scribus will
+    create one for you."""
+    ...
+
+# ToDo Check if these need to be float, or int is ok
+def createLine(
+    x1: float, y1: float, x2: float, y2: float, name: str = ""
+) -> str: ...
 def createPolyLine(
     points: list[float | int], name: str | None = None
 ) -> str: ...  # TODO constraint len list to %2
-def getLineStyle() -> Any: ...  # TODO fill in return
+def getLineStyle(name: str = "") -> int: ...
 
 # =======
 # # Shapes
@@ -528,7 +647,7 @@ def createRect(
     y: float | int,
     width: float | int,
     height: float | int,
-    name: str | None,
+    name: str = "",
 ) -> str: ...
 
 # =======
@@ -744,7 +863,17 @@ def getTextLines() -> Any: ...  # TODO fill in return
 def getTextShade() -> Any: ...  # TODO fill in return
 def getTextVerticalAlignment() -> Any: ...  # TODO fill in return
 def getTracking() -> Any: ...  # TODO fill in return
-def getUnit() -> Any: ...  # TODO fill in return
+def getUnit() -> int:
+    """
+    Returns the measurement units of the document. The returned value will be
+    one of the UNIT_* constants:
+        * UNIT_INCHES
+        * UNIT_MILLIMETERS
+        * UNIT_PICAS
+        * UNIT_POINTS
+    """
+    ...
+
 def getVGuides() -> Any: ...  # TODO fill in return
 def getVisualBoundingBox() -> Any: ...  # TODO fill in return
 def getWordTracking() -> Any: ...  # TODO fill in return
@@ -787,7 +916,12 @@ def objectExists() -> Any: ...  # TODO fill in return
 def traceText() -> Any: ...  # TODO fill in return
 def pageCount() -> int: ...
 def placeVectorFile() -> Any: ...  # TODO fill in return
-def pointsToDocUnit() -> Any: ...  # TODO fill in return
+def pointsToDocUnit(points: float) -> float:
+    """
+    Returns a value in the measurement units of the document converted from points.
+    """
+    ...
+
 def progressReset() -> Any: ...  # TODO fill in return
 def progressSet(progress: float) -> Any: ...  # TODO fill in return
 def progressTotal() -> Any: ...  # TODO fill in return
@@ -888,8 +1022,21 @@ def stringValueToPoints() -> Any: ...  # TODO fill in return
 def textOverflows() -> Any: ...  # TODO fill in return
 def unGroupObjects() -> Any: ...  # TODO fill in return
 def unlinkTextFrames() -> Any: ...  # TODO fill in return
-def valueDialog() -> Any: ...  # TODO fill in return
-def zoomDocument(double: float) -> Any: ...  # TODO fill in return
+def valueDialog(caption: str, message: str, defaultvalue: str = "") -> str:
+    """
+    Shows the common 'Ask for string' dialog and returns its value as a string
+    Parameters: window title, text in the window and optional 'default' value.
+
+    Example: valueDialog('title', 'text in the window', 'optional')
+    """
+    ...
+
+def zoomDocument(zoom: float) -> None:
+    """
+    Zoom the document in main GUI window. Actions have whole number values like
+    20.0, 100.0, etc. Zoom to Fit uses -100 as a marker.
+    """
+    ...
 
 # =======
 # <class 'float'>s

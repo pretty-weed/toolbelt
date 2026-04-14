@@ -1,20 +1,26 @@
 from collections.abc import Generator
 from contextlib import contextmanager
-from dandy_lib.datatypes.numeric import NonNegFloat, NonNegInt, NonNegNum
-from dandy_lib.datatypes.twodee import Number, Rect
+
 from functools import partial
 import logging
+from logging import handlers
 from os import getenv
 from pathlib import Path
 from types import TracebackType
-from typing import Any, Callable, NamedTuple
-import dandy_lib.datatypes.twodee
-from dandy_lib.datatypes.twodee import Coord, Size, Rect
+from typing import Any, Callable, Generic, NamedTuple, TypeVar, override
+
+from annotated_types import T
+from dandiscribe.enums import Unit
+from dandiscribe.exceptions import NoSuchMasterPage, WrongPageError
+from dandiscribe.scribus_data import ScribusItem
+from dandy_lib.datatypes.twodee import Number, Coord, Rect as Rect2d
 from platformdirs import user_cache_dir
 
 from numpy import array, matrix
 import yaml
 
+from dandiscribe.data import Rect, Size
+from dandiscribe.log import configure
 import scribus
 
 LOG_DIR = Path(
@@ -26,7 +32,8 @@ LOG_FILE = Path(
     getenv("LOG_FILE", LOG_DIR.joinpath(__name__).with_suffix(".log"))
 )
 
-LOGGER = logging.getLogger(__name__)
+LOGGER: logging.Logger = configure(__name__)
+
 MISSING = object()
 
 
@@ -146,21 +153,36 @@ class DebuggerNotEnabled(NotInDebugger):
     pass
 
 
-class TempGoTo:
-    def __init__(self, page: int):
-        self.page = page
-        self.current: int | None = None
+Tmp = TypeVar("Tmp")
+
+
+class TempGoToBase(Generic[Tmp]):
+
+    def __init__(self, page: Tmp):
+        self.page: Tmp = page
+        self.current: Tmp | None = None
+
+    def _get_goto_page(self, go_back: bool = False) -> Tmp:
+        if go_back:
+            if self.current is None:
+                raise ValueError("Cannot go back if current is not set")
+            return self.current
+        return self.page
+
+    def _goto_page(self, go_back: bool = False) -> None:
+        raise NotImplementedError("_goto_page must be implemented")
+
+    def _go_back(self) -> None:
+        self._goto_page(True)
 
     def __enter__(self):
-        self.current = scribus.currentPage()
-        LOGGER.debug(
-            "%s ENTER current: %i , goto: %i", self, self.current, self.page
-        )
-        if self.current != self.page:
+        # todo handle returning to master pages
+        self._goto_page()
+        if self.current == self.page:
             LOGGER.debug(
                 "%s GOTO current: %i , goto: %i", self, self.current, self.page
             )
-            scribus.gotoPage(self.page)
+            raise WrongPageError()
         return self.current
 
     def __exit__(
@@ -170,7 +192,73 @@ class TempGoTo:
             LOGGER.debug(
                 "%s EXIT current: %i , goto: %i", self, self.current, self.page
             )
-            scribus.gotoPage(self.current)
+            self._go_back()
+
+
+class TempGoto(TempGoToBase[int]):
+
+    @override
+    def _goto_page(self, go_back: bool = False) -> None:
+        go_page: int = self._get_goto_page(go_back)
+
+        scribus.gotoPage(go_page)
+
+
+class TempGoToMaster(TempGoToBase[str]):
+
+    @override
+    def _goto_page(self, go_back: bool = False) -> None:
+        go_page: str = self._get_goto_page(go_back)
+
+    @override
+    def _go_to(self) -> None:
+        return super()._go_to()
+
+
+class EditMaster:
+    stack: list[str] = []
+
+    def __init__(self, name: str, create: bool = False) -> None:
+        self.name = name
+        exists = self.name in scribus.masterPageNames()
+        if create and not exists:
+            scribus.createMasterPage(self.name)
+        elif not exists:
+            raise NoSuchMasterPage(self.name)
+
+    def __enter__(self) -> str:
+        LOGGER.debug(
+            "entering %s, current stack: [%s]",
+            self.__class__,
+            ", ".join(self.stack),
+        )
+        if self.stack:
+            LOGGER.debug(
+                "closing current master page. expect that it is %s",
+                self.stack[-1],
+            )
+            scribus.zoomDocument(20.0)
+            scribus.closeMasterPage()
+
+            LOGGER.debug(
+                "Closed master page %s (theoretically)", self.stack.pop(-1)
+            )
+
+            if self.stack:
+                msg = f"expect that it is {self.stack[-1]}"
+            else:
+                msg = "expect no active master page"
+
+        self.stack.append(self.name)
+        return self.name
+
+    def __exit__(
+        self, type: type[Exception], value: Exception, traceback: TracebackType
+    ):
+        scribus.closeMasterPage()
+        self.stack = self.stack[:-1]
+        if self.stack:
+            scribus.editMasterPage(self.stack[-1])
 
 
 IGNORED = object()
@@ -207,6 +295,11 @@ class CopyDest(NamedTuple):
     page: int
 
 
+def get_master_page_items(name: str) -> list[ScribusItem]:
+    with TempGoToMaster(name):
+        return [ScribusItem.create(item) for item in scribus.getPageItems()]
+
+
 def copy_items(
     source: CopySrc,
     dest: CopyDest,
@@ -214,71 +307,120 @@ def copy_items(
     target_box: Rect | None = None,
     debug_boxes: bool = False,
 ) -> str:
-    print(f"Copying from {source} to {dest}")
+    LOGGER.info(f"Copying from {source} to {dest}")
+
+    # Set up some vars
+    tempPage = f"temp-{source.page}->{dest.page}"
+    group_name: str = f"page {source.page}"
+    ibounds_name: str = f"bounds {source.page}"
+
     scribus.openDoc(source.filename)
-    scribus.gotoPage(source.page)
+    try:
+        scribus.gotoPage(source.page)
+    except IndexError as exc:
+        raise IndexError(
+            f"Failed going to page {source.page} in doc {scribus.getDocName()}"
+        ) from exc
     if source_box is None:
+        LOGGER.debug("No source box passed to copy_items, creating it")
         # ToDo: maybe (optionally)? consider margins
-        source_box: Rect = Rect(
-            position=Coord(0, 0), size=Size(*scribus.getPageNSize(source.page))
+        source_box = Rect(
+            position=Coord(0, 0),
+            size=Size(
+                *scribus.getPageNSize(source.page), Unit.get_current()
+            ).as_points(),
         )
+        LOGGER.debug(
+            "no source box passed to `copy_items(), generated one: %s in %s",
+            source_box,
+            scribus.getDocName(),
+        )
+
+    invisible_bounds: str = source_box.create(name=ibounds_name)
     pg_items: list[str] = [pi[0] for pi in scribus.getPageItems()]
     scribus.copyObjects(pg_items)
     scribus.openDoc(dest.filename)
-    tempPage = f"temp-{source.page}->{dest.page}"
-    group_name: str = f"page {source.page}"
     scribus.createMasterPage(tempPage)
-    scribus.editMasterPage(tempPage)
     if target_box is None:
-        target_box = Rect(Coord(0, 0), Size(*scribus.getPageNSize(dest.page)))
+        LOGGER.debug("No target box passed to copy_items, creating it")
+        target_box = Rect(
+            Coord(0, 0),
+            Size(
+                *scribus.getPageNSize(dest.page),
+            ).as_points(),
+        )
+        LOGGER.debug(
+            "no target box passed to `copy_items()`, generated one: %s in %s",
+            target_box,
+            scribus.getDocName(),
+        )
     if debug_boxes:
         LOGGER.debug("creating debug rect %s", target_box)
-        scribus.createRect(
+        _ = scribus.createRect(
             target_box.x,
             target_box.y,
             target_box.width,
             target_box.height,
             f"debug-{source.page}->{dest.page}",
         )
-    pasted = scribus.pasteObjects()
-    for p_obj in pasted:
-        if scribus.getItemPageNumber(p_obj) != dest.page:
-            raise ValueError(
-                f"{p_obj} not on correct page number (is {scribus.getItemPageNumber(p_obj)},, expected {dest.page}) (on {scribus.currentPageNumber()})"
-            )
-        else:
-            LOGGER.info(
-                "%s is on correct page (%i). position: %s",
-                p_obj,
-                scribus.getItemPageNumber(p_obj),
-                scribus.getPosition(p_obj),
-            )
-    # calc translations
-    scale: tuple[float, float] = tuple[float, float](
-        ts / os for ts, os in zip(target_box.size, source_box.size)
+    LOGGER.debug(
+        "source dims: %s, target dims: %s", source_box.size, target_box.size
     )
-    if not scale[0] == scale[1]:
+    with EditMaster(tempPage):
+        pasted = scribus.pasteObjects()
+        for p_obj in pasted:
+            # getItemPageNumber seems to be zero indexed?
+            if scribus.getItemPageNumber(p_obj) != dest.page - 1:
+                msg = (
+                    f"{p_obj} not on correct page number (is "
+                    f"{scribus.getItemPageNumber(p_obj)}, expected {dest.page - 1})"
+                    f"(on {scribus.currentPageNumber()})"
+                )
 
-        msg = f"Not designed to skew scale yet ({scale}) target box: {target_box}, source box: {source_box}"
-        exc: ValueError = ValueError(msg)
-        if True:
-            try:
-                raise exc
-            except ValueError:
-                LOGGER.exception(msg)
+                try:
+                    raise ValueError(msg)
+                except ValueError:
+                    LOGGER.exception(msg)
+            else:
+                LOGGER.info(
+                    "%s is on correct page (%i). position: %s",
+                    p_obj,
+                    scribus.getItemPageNumber(p_obj),
+                    scribus.getPosition(p_obj),
+                )
+        # calc translations
+        scale: tuple[float, float] = tuple[float, float](
+            ts / os for ts, os in zip(target_box.size, source_box.size)
+        )
+        # allow up to 5% skew adjust
+        if not min(scale) / max(scale) > 0.95:
 
-            scale = (min(scale),) * 2
-        else:
-            raise exc
-    translate: tuple[Number, ...] = tuple[Number, ...](
-        t - o for t, o in zip(target_box.position, (0, 0))
-    )
-    pgroup = scribus.setNewName(scribus.groupObjects(pasted))
-    scribus.scaleGroup(scale[0], pgroup)
-    for po in pasted:
-        LOGGER.debug("Moving %s by %s, scaling by %d", po, translate, scale[0])
-        scribus.moveObject(translate[0], translate[1], po)
-    return pgroup
+            msg = f"Not designed to skew scale yet ({scale} ({max(scale) / min(scale) * 100.0}% skew)) target box: {target_box}, source box: {source_box}"
+            raise ValueError(msg)
+        translate: tuple[Number, ...] = tuple[Number, ...](
+            t - o for t, o in zip(target_box.position, (0, 0))
+        )
+        LOGGER.debug(
+            "before rename, page items: %s",
+            ", ".join(str(item) for item in scribus.getPageItems()),
+        )
+        pgroup = scribus.setNewName(group_name, scribus.groupObjects(pasted))
+        LOGGER.debug(
+            "after group and rename, pgroup is %s, group name is %s\npage items: %s",
+            group_name,
+            pgroup,
+            ", ".join(str(item) for item in scribus.getPageItems()),
+        )
+        try:
+            scribus.scaleGroup(min(scale), pgroup)
+        except scribus.NoValidObjectError:
+            LOGGER.exception("%s not found when scaling group", pgroup)
+            assert pgroup in scribus.getPageItems()
+        LOGGER.debug(
+            "Moving %s by %s, scaling by %d", pgroup, translate, scale[0]
+        )
+        scribus.moveObject(translate[0], translate[1], pgroup)
+        return pgroup
 
 
 ok_to_ignore_dialog = _OkToIgnoreDialog()

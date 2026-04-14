@@ -4,9 +4,10 @@ from _typeshed import Incomplete
 from dandiscribe.util import ok_to_ignore_dialog as ok_to_ignore_dialog
 from dandy_lib.datatypes.numeric import NonNegInt as NonNegInt
 from dataclasses import dataclass, field
+from typing import TypeAlias
 
-ZeroToOnehundredInt: Incomplete
-FullIntensity: Incomplete
+ZeroToOneHundredInt: TypeAlias
+FullIntensity: ZeroToOneHundredInt
 
 @dataclass(frozen=True)
 class LineStyle:
@@ -20,8 +21,8 @@ TwoPointBlackLine: Incomplete
 @dataclass
 class FillStyle:
     color: dandiscribe.colors.COLORS
-    shade: ZeroToOnehundredInt = ...
-    def __post_init__(self, shade: ZeroToOnehundredInt = ...): ...
+    shade: ZeroToOneHundredInt = ...
+    def __post_init__(self, shade: ZeroToOneHundredInt = ...): ...
 
 NO_FILL: Incomplete
 

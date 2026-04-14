@@ -112,13 +112,15 @@ tasks:
     aliases: ["I"]
     vars:
       PACKAGE: '.'
+      ED_VAL: '{{ .EDITABLE | default "true" | trim | lower }}'
+      EDITABLE: '{{ if or  (eq .ED_VAL "t") (eq .ED_VAL "true" ) (eq .ED_VAL "1") }}-e {{ end}}'
     preconditions:
       # I would do this with requires:{vars:{name: enum:}} but that doesn't support a ref it seems
       - cmd: ":" # TODO, fail if package is not a valid EXTRA
     cmds:
       # always do an editable install, as that caches the github dep
       # ToDo: Make editable optional
-      - 'pip install {{ .CACHED_INSTALL_FLAGS }} -e {{ .PACKAGE }}'
+      - 'pip install {{ .CACHED_INSTALL_FLAGS }} {{ .EDITABLE }} {{ .PACKAGE }}'
 
   install-offline:
     # ToDo: handle github with cached
@@ -137,6 +139,8 @@ tasks:
       - stubs
     vars:
       STUB_DIR: type_stubs
+    sources:
+      - src/**
     cmds:
       - stubgen --package danditools --package dandiscribe --output {{ .STUB_DIR }} {{ .CLI_ARGS }}
       - black {{ .STUB_DIR }}
@@ -152,3 +156,21 @@ tasks:
         for fname in shelltools/*; do
         test ! -e {{ .INSTALL_DIR }}/$fname && ln -s $(realpath "shelltools/${fname}") "{{.INSTALL_DIR}}/${fname}"
         done
+
+  type-deps:
+    internal: true
+    aliases: ["type", "typing"]
+    sources:
+      - pyproject.toml
+    cmds:
+      - pip install .[type]
+
+
+  type-check:
+    aliases: ["type", "typing"]
+    deps:
+      - type-deps
+      - stubs
+    cmds:
+      - mypy src
+      - mypy tests

@@ -1,19 +1,24 @@
+import logging
 from _typeshed import Incomplete
+from annotated_types import T as T
 from collections.abc import Generator
 from contextlib import contextmanager
-from dandy_lib.datatypes.numeric import (
-    NonNegFloat as NonNegFloat,
-    NonNegInt as NonNegInt,
-    NonNegNum as NonNegNum,
+from dandiscribe.data import Rect as Rect, Size as Size
+from dandiscribe.enums import Unit as Unit
+from dandiscribe.exceptions import (
+    NoSuchMasterPage as NoSuchMasterPage,
+    WrongPageError as WrongPageError,
 )
-from dandy_lib.datatypes.twodee import Rect
+from dandiscribe.log import configure as configure
+from dandiscribe.scribus_data import ScribusItem as ScribusItem
+from logging import handlers as handlers
 from numpy import array as array, matrix as matrix
 from types import TracebackType
-from typing import NamedTuple
+from typing import Generic, NamedTuple, TypeVar
 
 LOG_DIR: Incomplete
 LOG_FILE: Incomplete
-LOGGER: Incomplete
+LOGGER: logging.Logger
 MISSING: Incomplete
 
 class PauseDrawing:
@@ -44,11 +49,25 @@ def get_justify_adjustments(count: int, remainder: int) -> list[int]: ...
 class NotInDebugger(Exception): ...
 class DebuggerNotEnabled(NotInDebugger): ...
 
-class TempGoTo:
-    page: Incomplete
-    current: int | None
-    def __init__(self, page: int) -> None: ...
+Tmp = TypeVar("Tmp")
+
+class TempGoToBase(Generic[Tmp]):
+    page: Tmp
+    current: Tmp | None
+    def __init__(self, page: Tmp) -> None: ...
     def __enter__(self): ...
+    def __exit__(
+        self, type: type[Exception], value: Exception, traceback: TracebackType
+    ): ...
+
+class TempGoto(TempGoToBase[int]): ...
+class TempGoToMaster(TempGoToBase[str]): ...
+
+class EditMaster:
+    stack: list[str]
+    name: Incomplete
+    def __init__(self, name: str, create: bool = False) -> None: ...
+    def __enter__(self) -> str: ...
     def __exit__(
         self, type: type[Exception], value: Exception, traceback: TracebackType
     ): ...
@@ -69,6 +88,7 @@ class CopyDest(NamedTuple):
     filename: str
     page: int
 
+def get_master_page_items(name: str) -> list[ScribusItem]: ...
 def copy_items(
     source: CopySrc,
     dest: CopyDest,

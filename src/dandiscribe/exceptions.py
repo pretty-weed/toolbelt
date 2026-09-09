@@ -1,3 +1,4 @@
+from shutil import ExecError
 from typing import Any, LiteralString
 
 
@@ -36,7 +37,39 @@ class WrongPageError(Exception):
 
 
 class NoSuchMasterPage(Exception):
-    def __init__(name: str) -> None:
+    def __init__(self, name: str) -> None:
         msg = f"could not find the master page {name}"
         self.name = name
         super().__init__(msg)
+
+
+class ScriptRunError(Exception):
+    """
+    Some unexpected situation arose when a script was running, which indicates
+    that something expected did not happen
+    """
+
+    def __init__(
+        self, msg: str, expected: Any | None = None, actual: Any | None = None
+    ) -> None:
+        self.expected: Any | None = expected
+        self.actual: Any | None = actual
+
+        return super().__init__(msg)
+
+
+class PageOutOfRange(IndexError):
+    def __init__(
+        self, page: int, doc_name: str = "", pages_added: int | None = None
+    ) -> None:
+
+        self.page = page
+        self.doc_name = doc_name
+        self.pages_added = pages_added
+
+        super().__init__(
+            f"Page {page} is out of range{' in ' + doc_name if doc_name else ''}"
+        )
+
+    def added_pages(self) -> bool:
+        return bool(self.pages_added)

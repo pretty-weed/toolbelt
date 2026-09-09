@@ -1,25 +1,37 @@
 import logging
 from _typeshed import Incomplete
-from annotated_types import T as T
 from collections.abc import Generator
 from contextlib import contextmanager
+from dandiscribe import vis_debug as vis_debug
 from dandiscribe.data import Rect as Rect, Size as Size
 from dandiscribe.enums import Unit as Unit
 from dandiscribe.exceptions import (
     NoSuchMasterPage as NoSuchMasterPage,
+    PageOutOfRange as PageOutOfRange,
     WrongPageError as WrongPageError,
 )
 from dandiscribe.log import configure as configure
 from dandiscribe.scribus_data import ScribusItem as ScribusItem
+from dandy_lib.datatypes.twodee import Vector as Vector
 from logging import handlers as handlers
 from numpy import array as array, matrix as matrix
 from types import TracebackType
-from typing import Generic, NamedTuple, TypeVar
+from typing import Callable, Generic, NamedTuple, TypeAlias, TypeVar
 
 LOG_DIR: Incomplete
 LOG_FILE: Incomplete
 LOGGER: logging.Logger
 MISSING: Incomplete
+
+class CopyTransformation(NamedTuple):
+    translation: Vector
+    scale: Vector
+
+TransformHandler: TypeAlias = Callable[
+    [Rect, Rect, list[str]], dict[frozenset[str]]
+]
+
+def no_skew(source: Rect, dest: Rect, objects: list[str]) -> list[str]: ...
 
 class PauseDrawing:
     @classmethod
@@ -42,7 +54,7 @@ CACHE_FILE: Incomplete
 
 def get_cache_res() -> str | int | float | list | dict | None: ...
 def get_cache_val(key: str, cache_res=None): ...
-def cache_val(key: str, value, overwrite: bool = False): ...
+def cache_val(key: str, value, overwrite: bool = False) -> None: ...
 def clear_cache_val(key: str): ...
 def get_justify_adjustments(count: int, remainder: int) -> list[int]: ...
 
@@ -94,7 +106,8 @@ def copy_items(
     dest: CopyDest,
     source_box: Rect | None = None,
     target_box: Rect | None = None,
-    debug_boxes: bool = False,
+    rotation: float | int | None = None,
+    transform_hander: TransformHandler = ...,
 ) -> str: ...
 
 ok_to_ignore_dialog: Incomplete

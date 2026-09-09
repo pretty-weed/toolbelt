@@ -45,15 +45,12 @@ from dandiscribe.util import (
     TempGoTo,
 )
 
-import dandiscribe.calendar.data as data
 from dandiscribe.calendar.pages import (
     gen_notes_spread_pages,
     A5FrontPage,
     A5MonthSpreadPage,
     A5NotesPage,
     A5WeekSpreadPage,
-    MonthSpreadPage,
-    WeekSpreadPage,
 )
 
 PROFILE = True
@@ -200,7 +197,7 @@ def make_doc(routines_file=ROUTINES_FILE) -> Document:
             end = prompt_to_date(end_prompt, first_page_date)
 
         except ValueError:
-            logger.exception("ValueError in loop", level=WARNING)
+            logger.exception("ValueError in loop")
             dates_prompt = scribus.valueDialog(
                 "End date", "yyyy[/.-]mm[/.-]dd".end.isoformat()
             )
@@ -313,6 +310,7 @@ def make_doc(routines_file=ROUTINES_FILE) -> Document:
     with PauseDrawing():
         doc.draw(tasks, event_by_date)
         # Checkbox.clean()
+    return doc
 
 
 def entry_point(routines_file=ROUTINES_FILE, profile=PROFILE, debug=False):

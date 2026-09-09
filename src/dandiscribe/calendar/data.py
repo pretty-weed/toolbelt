@@ -8,16 +8,15 @@ from enum import Enum
 from functools import cache
 from logging import getLogger, INFO
 from os import getenv
-from pathlib import Path, PurePath
+from pathlib import Path
 from typing import Any, Iterator, NamedTuple, Self, Union
-from urllib.parse import urlparse, ParseResult
 
-import icalendar
 from yaml import safe_load
 from requests import get
 from requests.exceptions import ConnectionError
 from icalendar import Calendar, Event
 
+from dandiscribe.util import JSONValue
 
 CONF_FILE = Path(
     getenv("CONF_FILE", Path().home().joinpath(".private", "calendars.yaml"))
@@ -318,11 +317,11 @@ class TIME_OF_DAY(Enum):
 
 
 class RoutineTime(NamedTuple):
-    weekdays: frozenset[int]
-    time_of_day: TIME_OF_DAY | time
+    weekdays: frozenset[int] | None
+    time_of_day: TIME_OF_DAY | time | None
     weeks: frozenset[int] | None = None
-    start: datetime.date | None = None
-    end: datetime.date | None = None
+    start: date | None = None
+    end: date | None = None
 
     @classmethod
     def load(cls, in_dict):
@@ -345,7 +344,7 @@ class RoutineTime(NamedTuple):
 
         for param in ["start", "end"]:
             if param in in_dict:
-                in_dict[param] = datetime.date.fromisoformat(in_dict[param])
+                in_dict[param] = date.fromisoformat(in_dict[param])
 
         return cls(
             **(
@@ -435,21 +434,23 @@ class Task(Container):
             )
 
     @classmethod
-    def load(cls, in_dict):
-        in_dict = dict(
+    def load(cls, in_dict: JSONValue):
+        load_dict: dict[str | Any, JSONValue | date | datetime] = dict(
             (k.lower(), v)
             for k, v in in_dict.items()
             if k.lower() in cls.__dataclass_fields__
         )
         if "due" in in_dict:
             try:
-                in_dict["due"] = date.fromisoformat(in_dict["due"])
+                load_dict["due"] = date.fromisoformat(in_dict["due"])
             except ValueError:
-                in_dict["due"] = datetime.fromisoformat(in_dict["due"])
+                load_dict["due"] = datetime.fromisoformat(in_dict["due"])
         if "routine_time" in in_dict:
-            in_dict["routine_time"] = RoutineTime.load(in_dict["routine_time"])
+            load_dict["routine_time"] = RoutineTime.load(
+                in_dict["routine_time"]
+            )
 
-        loaded = cls(**in_dict)
+        loaded = cls(**load_dict)
 
         return loaded
 
@@ -462,7 +463,6 @@ def tasks_by_routine_day_and_time(
         valid_times = list(TIME_OF_DAY)
 
     # get most specific time first
-    sorted(valid_times, key=lambda x: x.value.duration())
     for task in tasks:
         if task.routine_time is None:
             continue
@@ -484,7 +484,7 @@ def tasks_by_routine_day_and_time(
 
         task_weekdays: frozenset[int] | None = task.routine_time.weekdays
         if task_weekdays is None:
-            task_weekdays = list(range(7))
+            task_weekdays = frozenset(range(7))
 
         for weekday in task_weekdays:
             sorted_tasks.setdefault(weekday, dict()).setdefault(
@@ -496,7 +496,7 @@ def tasks_by_routine_day_and_time(
 def get_tasks(
     tasks: list[Task],
     date: date,
-    time_of_day: Optional[TIME_OF_DAY] = None,
+    time_of_day: TIME_OF_DAY | None = None,
     remove_routine: bool = False,
 ) -> Iterator[Task]:
     if remove_routine:

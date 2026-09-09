@@ -1,21 +1,20 @@
 import logging
 from dandiscribe.log import configure as configure
 from dandy_lib.cli.enums import ChoiceEnumMeta, ChoiceEnumMixin
-from dandy_lib.datatypes.twodee import Number as Number
-from enum import Enum, IntEnum, StrEnum
+from dandy_lib.datatypes.twodee import Number as Number, Size
+from enum import Enum, EnumMeta as EnumMeta, Flag as Flag, IntEnum, StrEnum
 from multiprocessing import Value as Value
 from typing import ClassVar, Self, override
 
 LOGGER: logging.Logger
 
-class PaperSize(
-    ChoiceEnumMixin, tuple[float, float], Enum, metaclass=ChoiceEnumMeta
-):
+class PaperSize(ChoiceEnumMixin, Size, Enum, metaclass=ChoiceEnumMeta):
     LETTER = ...
     LEGAL = ...
     A5 = ...
     A4 = ...
     LETTER_HALF = ...
+    def for_scribus(self, unit=None) -> tuple[float, float]: ...
 
 class COLORS(StrEnum):
     NONE = "None"
@@ -74,6 +73,17 @@ class LinespacingMode(IntEnum):
     FIXED = 0
     AUTOMATIC = 1
     BASELINE_GRID = 2
+
+class InsertPaddingPages(ChoiceEnumMixin, IntEnum, metaclass=ChoiceEnumMeta):
+    NO = 0
+    BEGINNING = 1
+    END = 2
+    @override
+    def __bool__(self) -> bool: ...
+
+class Orientation(IntEnum):
+    LANDSCAPE = ...
+    PORTRAIT = ...
 
 class UnitType:
     __instances__: ClassVar[dict[str, Self]]

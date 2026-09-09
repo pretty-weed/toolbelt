@@ -3,8 +3,9 @@ ToDo:
     * Check for positional-only
 """
 
+from re import I
 from types import CapsuleType
-from typing import Any, Callable, Self, SupportsIndex, override
+from typing import Any, Callable, Literal, Self, SupportsIndex, override
 from warnings import deprecated
 
 # =======
@@ -250,55 +251,6 @@ class WrongFrameTypeError(Exception): ...
 # tuples
 # =======
 
-# The `PAPER_[A-Z]+` constants are expressed in points
-PAPER_A0: tuple[float, float]
-PAPER_A0_MM: tuple[float, float]
-PAPER_A1: tuple[float, float]
-PAPER_A1_MM: tuple[float, float]
-PAPER_A2: tuple[float, float]
-PAPER_A2_MM: tuple[float, float]
-PAPER_A3: tuple[float, float]
-PAPER_A3_MM: tuple[float, float]
-PAPER_A4: tuple[float, float]
-PAPER_A7: tuple[float, float]
-PAPER_A5: tuple[float, float]
-PAPER_A8: tuple[float, float]
-PAPER_A6: tuple[float, float]
-PAPER_A9: tuple[float, float]
-PAPER_A7_MM: tuple[float, float]
-PAPER_A8_MM: tuple[float, float]
-PAPER_A9_MM: tuple[float, float]
-PAPER_B0: tuple[float, float]
-PAPER_B0_MM: tuple[float, float]
-PAPER_B1: tuple[float, float]
-PAPER_B10: tuple[float, float]
-PAPER_B10_MM: tuple[float, float]
-PAPER_B1_MM: tuple[float, float]
-PAPER_B2: tuple[float, float]
-PAPER_B2_MM: tuple[float, float]
-PAPER_B3: tuple[float, float]
-PAPER_B3_MM: tuple[float, float]
-PAPER_B4: tuple[float, float]
-PAPER_B4_MM: tuple[float, float]
-PAPER_B5: tuple[float, float]
-PAPER_B5_MM: tuple[float, float]
-PAPER_B6: tuple[float, float]
-PAPER_B6_MM: tuple[float, float]
-PAPER_B7: tuple[float, float]
-PAPER_B7_MM: tuple[float, float]
-PAPER_B8: tuple[float, float]
-PAPER_B8_MM: tuple[float, float]
-PAPER_B9: tuple[float, float]
-PAPER_B9_MM: tuple[float, float]
-PAPER_C5E: tuple[float, float]
-PAPER_COMM10E: tuple[float, float]
-PAPER_DLE: tuple[float, float]
-PAPER_EXECUTIVE: tuple[float, float]
-PAPER_FOLIO: tuple[float, float]
-PAPER_LEDGER: tuple[float, float]
-PAPER_LEGAL: tuple[float, float]
-PAPER_LETTER: tuple[float, float]
-PAPER_TABLOID: tuple[float, float]
 SCRIBUS_VERSION_INFO: tuple[int, int, int, str, int]
 # =======
 # <class 'str'>s
@@ -311,16 +263,43 @@ __package__: str
 _i_str: str
 
 # =======
-# <class 'builtin_function_or_method'>s
+# Scribus
 # =======
+
+def progressReset() -> Any: ...  # TODO fill in return
+def progressSet(progress: float) -> Any: ...  # TODO fill in return
+def progressTotal() -> Any: ...  # TODO fill in return
+def messageBox() -> Any: ...  # TODO fill in return
+def statusMessage() -> Any: ...  # TODO fill in return
 
 # =======
 # # Document
 # =======
 
-def closeDoc() -> None: ...
+def closeDoc() -> None:
+    """
+    closeDoc()
+
+    Closes the current document without prompting to save.
+
+    May throw NoDocOpenError if there is no document to close
+    """
+    ...
+
 def docChanged(changed: bool) -> None: ...
 def docUnitToPoints(value: float) -> float: ...
+def getDocName() -> str: ...
+def getUnit() -> int:
+    """
+    Returns the measurement units of the document. The returned value will be
+    one of the UNIT_* constants:
+        * UNIT_INCHES
+        * UNIT_MILLIMETERS
+        * UNIT_PICAS
+        * UNIT_POINTS
+    """
+    ...
+
 def haveDoc() -> int: ...
 @deprecated("Use NewDocument instead")
 def newDoc(
@@ -411,6 +390,36 @@ newDocument.__doc__ = """newDocument(...)
 """
 
 def openDoc(name: str) -> None: ...  # TODO need to fill in return
+def pointsToDocUnit(points: float) -> float:
+    """
+    Returns a value in the measurement units of the document converted from points.
+    """
+    ...
+
+def saveDoc() -> None:
+    """
+    saveDoc()
+
+    Saves the current document with its current name, returns true if successful. If the document has not already been saved, this may bring up an interactive save file dialog.
+
+    If the save fails, there is currently no way to tell.
+    """
+    ...
+
+def saveDocAs(newName: str) -> literal[True]:
+    """
+    Saves the current document under the new name "name" (which may be a full or relative path).
+
+    May raise ScribusError if the save fails.
+    """
+    ...
+
+def scrollDocument() -> Any: ...  # TODO fill in return
+def setBaseLine() -> Any: ...  # TODO fill in return
+def setBleeds() -> Any: ...  # TODO fill in return
+def setDocType(
+    facingPages: int, firstPageLeft: int
+) -> None: ...  # TODO need to fill in return
 
 # =======
 # # Pages
@@ -426,6 +435,65 @@ def getPageNMargins() -> tuple[float, float, float, float]: ...
 def getPageSize() -> tuple[float, float]: ...
 def getPageNSize(pgNo: int) -> tuple[float, float]: ...
 def getPageType() -> int: ...  # TODO constrain int return
+def gotoPage(pageNr: int) -> None: ...  # TODO need to fill in return
+def newPage(where: int, masterPage: str = "") -> None: ...
+def pageCount() -> int: ...
+def getPageNSize(nr: int) -> tuple[float, float]: ...
+def pageDimension() -> tuple[float, float]: ...
+
+# =======
+# ## Paper Consts
+# =======
+
+# The `PAPER_[A-Z]+` constants are expressed in points
+PAPER_A0: tuple[float, float]
+PAPER_A0_MM: tuple[float, float]
+PAPER_A1: tuple[float, float]
+PAPER_A1_MM: tuple[float, float]
+PAPER_A2: tuple[float, float]
+PAPER_A2_MM: tuple[float, float]
+PAPER_A3: tuple[float, float]
+PAPER_A3_MM: tuple[float, float]
+PAPER_A4: tuple[float, float]
+PAPER_A7: tuple[float, float]
+PAPER_A5: tuple[float, float]
+PAPER_A8: tuple[float, float]
+PAPER_A6: tuple[float, float]
+PAPER_A9: tuple[float, float]
+PAPER_A7_MM: tuple[float, float]
+PAPER_A8_MM: tuple[float, float]
+PAPER_A9_MM: tuple[float, float]
+PAPER_B0: tuple[float, float]
+PAPER_B0_MM: tuple[float, float]
+PAPER_B1: tuple[float, float]
+PAPER_B10: tuple[float, float]
+PAPER_B10_MM: tuple[float, float]
+PAPER_B1_MM: tuple[float, float]
+PAPER_B2: tuple[float, float]
+PAPER_B2_MM: tuple[float, float]
+PAPER_B3: tuple[float, float]
+PAPER_B3_MM: tuple[float, float]
+PAPER_B4: tuple[float, float]
+PAPER_B4_MM: tuple[float, float]
+PAPER_B5: tuple[float, float]
+PAPER_B5_MM: tuple[float, float]
+PAPER_B6: tuple[float, float]
+PAPER_B6_MM: tuple[float, float]
+PAPER_B7: tuple[float, float]
+PAPER_B7_MM: tuple[float, float]
+PAPER_B8: tuple[float, float]
+PAPER_B8_MM: tuple[float, float]
+PAPER_B9: tuple[float, float]
+PAPER_B9_MM: tuple[float, float]
+PAPER_C5E: tuple[float, float]
+PAPER_COMM10E: tuple[float, float]
+PAPER_DLE: tuple[float, float]
+PAPER_EXECUTIVE: tuple[float, float]
+PAPER_FOLIO: tuple[float, float]
+PAPER_LEDGER: tuple[float, float]
+PAPER_LEGAL: tuple[float, float]
+PAPER_LETTER: tuple[float, float]
+PAPER_TABLOID: tuple[float, float]
 
 # =======
 # # MasterPages
@@ -434,6 +502,7 @@ def getPageType() -> int: ...  # TODO constrain int return
 def applyMasterPage(masterPageName: str, pageNumber: int) -> None: ...
 def closeMasterPage() -> None: ...  # TODO need to fill in return
 def createMasterPage(pageName: str) -> None: ...
+def deleteMasterPage() -> Any: ...  # TODO fill in return
 def getMasterPage(pageNr: int) -> str: ...
 
 # =======
@@ -468,6 +537,51 @@ def setActiveLayer(layer: str) -> None: ...
 # Frame Properties
 # =======
 
+def getCornerRadius() -> Any: ...  # TODO fill in return
+def getGradientStop(index: int, name: str = "") -> tuple[str, float, float]:
+    """
+    getGradientStop(index, ["name"]) -> ("color", opacity, shade)
+
+    Returns a ("color", opacity, shade) tuple containing the stop at index on the gradient of the object "name". If "name" is not given the currently selected item is used.
+    """
+    ...
+
+def getGradientStopsCount() -> Any: ...  # TODO fill in return
+def getGradientVector() -> Any: ...  # TODO fill in return
+def getPosition() -> Any: ...  # TODO fill in return
+def getRotation() -> Any: ...  # TODO fill in return
+def getSize() -> tuple[float, float]: ...
+def setLineBlendmode() -> Any: ...  # TODO fill in return
+def setGradientFill() -> Any: ...  # TODO fill in return
+def setGradientStop() -> Any: ...  # TODO fill in return
+def setGradientVector() -> Any: ...  # TODO fill in return
+def setFillBlendmode(blendmode: int, name: str = "") -> None:
+    """
+    setFillBlendmode(blendmode, ["name"])
+
+    Sets the fill blendmode of the object "name" to blendmode If "name" is not given the currently selected item is used.
+    """
+    ...
+
+def setFillColor(color=str, name: str = "") -> None:
+    """
+    setFillColor("color", ["name"])
+
+    Sets the fill color of the object "name" to the color "color". "color" is the name of one of the defined colors. If "name" is not given the currently selected item is used.
+    """
+    ...
+
+def setFillShade(shade: int, name: str = "") -> None:  # TODO: Constrain value
+    """
+    setFillShade(shade, ["name"])
+
+    Sets the shading of the fill color of the object "name" to "shade". "shade" must be an integer value in the range from 0 (lightest) to 100 (full Color intensity). If "name" is not given the currently selected Item is used.
+
+    May raise ValueError if the fill shade is out of bounds.
+    """
+    ...
+
+def setFillTransparency() -> None: ...  # TODO fill in return
 def setLineCap(endType: int, name: str = "") -> None:
     """
     setLineCap(endtype, ["name"])
@@ -572,6 +686,11 @@ def setLineWidth(width: float, name: str = "") -> None:
     """
     ...
 
+def getFillBlendmode() -> Any: ...  # TODO fill in return
+def getFillColor() -> Any: ...  # TODO fill in return
+def getFillShade() -> Any: ...  # TODO fill in return
+def getFillTransparency() -> Any: ...  # TODO fill in return
+
 # =======
 # # Item
 # =======
@@ -660,6 +779,10 @@ def getTableFillColor() -> Any: ...  # TODO fill in return
 def getTableRowHeight() -> Any: ...  # TODO fill in return
 def getTableRows() -> Any: ...  # TODO fill in return
 def getTableStyle() -> Any: ...  # TODO fill in return
+def removeTableColumns() -> Any: ...  # TODO fill in return
+def removeTableRows() -> Any: ...  # TODO fill in return
+def resizeTableColumn() -> Any: ...  # TODO fill in return
+def resizeTableRow() -> Any: ...  # TODO fill in return
 def setTableBottomBorder() -> Any: ...  # TODO fill in return
 def setTableFillColor() -> Any: ...  # TODO fill in return
 def setTableLeftBorder() -> Any: ...  # TODO fill in return
@@ -713,8 +836,75 @@ def createCharStyle(
     scalev: float = 1.0,
     tracking: float = 0.0,
     language: str = "",
-) -> ...: ...  # TODO need to fill in return
-def createCustomLineStyle() -> Any: ...  # TODO fill in return
+) -> None:
+    """
+        createCharStyle(...)
+
+    Creates a character style. This function takes the following keyword parameters:
+
+    "name" [required] -> name of the char style to create
+
+    "font" [optional] -> name of the font to use
+
+    fontsize [optional] -> font size to set (double)
+
+    "features" [optional] -> nearer typographic details can be defined by a string that might contain the following phrases comma-separated (without spaces!):
+
+    -> inherit
+
+    -> bold
+
+    -> italic
+
+    -> underline
+
+    -> underlinewords
+
+    -> strike
+
+    -> superscript
+
+    -> subscript
+
+    -> outline
+
+    -> shadowed
+
+    -> allcaps
+
+    -> smallcaps
+
+    "fillcolor" [optional], "fillshade" [optional] -> specify fill options
+
+    "strokecolor" [optional], "strokeshade" [optional] -> specify stroke options
+
+    "bgcolor" [optional] -> specify background color
+
+    baselineoffset [optional] -> offset of the baseline
+
+    shadowxoffset [optional], shadowyoffset [optional] -> offset of the shadow if used
+
+    outlinewidth [optional] -> width of the outline if used
+
+    underlineoffset [optional], underlinewidth [optional] -> underline options if used
+
+    strikethruoffset [optional], strikethruwidth [optional] -> strikethru options if used
+
+    scaleh [optional], scalev [optional] -> scale of the chars
+
+    tracking [optional] -> tracking of the text
+
+    "language" [optional] -> language code
+
+    """
+    ...
+
+def getCharStyles() -> Any: ...  # TODO fill in return
+def getCharacterStyle() -> Any: ...  # TODO fill in return
+
+# ========
+# ## Paragraph Style
+# ========
 def createParagraphStyle(
     name: str,
     linespacingmode: int = 1,
@@ -732,13 +922,22 @@ def createParagraphStyle(
     bullet: str = "",
     tabs: list[tuple[float] | tuple[float, int] | tuple[float, int, str]] = [],
 ) -> ...: ...  # TODO need to fill in return
-def getLineStyles() -> Any: ...  # TODO fill in return
 def getParagraphStyles() -> list[str]: ...  # TODO need to fill in return
+
+# ========
+# ## Line Style
+# ========
+def createCustomLineStyle() -> Any: ...  # TODO fill in return
+def getLineStyles() -> Any: ...  # TODO fill in return
+
+# ========
+# ## Table and Cell Styles
+# ========
 def getCellStyles() -> Any: ...  # TODO fill in return
 def getTableStyles() -> Any: ...  # TODO fill in return
 
 # =======
-# Color
+# # Color
 # =======
 
 def changeColor(name: str, c: int, m: int, y: int, k: int) -> None: ...
@@ -761,6 +960,82 @@ def getColorFloat() -> Any: ...  # TODO fill in return
 def getColorNames() -> Any: ...  # TODO fill in return
 
 # =======
+# # Text
+# =======
+
+def getFirstLineOffset() -> Any: ...  # TODO fill in return
+def getFirstLinkedFrame() -> Any: ...  # TODO fill in return
+def getFont() -> Any: ...  # TODO fill in return
+def getFontFeatures() -> Any: ...  # TODO fill in return
+def getFontNames() -> Any: ...  # TODO fill in return
+def getFontSize() -> Any: ...  # TODO fill in return
+def getFrameSelectedTextRange() -> Any: ...  # TODO fill in return
+def getText() -> Any: ...  # TODO fill in return
+def getMinWordTracking() -> Any: ...  # TODO fill in return
+def getNextLinkedFrame() -> Any: ...  # TODO fill in return
+def getPrevLinkedFrame() -> Any: ...  # TODO fill in return
+def getSelectedTextRange() -> Any: ...  # TODO fill in return
+def getTextColor() -> Any: ...  # TODO fill in return
+def getTextDistances() -> Any: ...  # TODO fill in return
+def getTextFlowMode() -> Any: ...  # TODO fill in return
+def getTextLength(texObj: str = "") -> int: ...
+def getTextLines() -> Any: ...  # TODO fill in return
+def getTextShade() -> Any: ...  # TODO fill in return
+def getTextVerticalAlignment() -> Any: ...  # TODO fill in return
+def setCharacterStyle() -> Any: ...  # TODO fill in return
+def setText(text: str, name: str = "") -> None: ...
+def setTextAlignment(align: int, name: str = "") -> None: ...
+def setTextAnnotation() -> Any: ...  # TODO fill in return
+def setTextColor(color: str, name: str = "") -> None: ...
+def setTextDirection() -> Any: ...  # TODO fill in return
+def setTextDistances() -> Any: ...  # TODO fill in return
+def textFlowMode() -> Any: ...  # TODO fill in return
+def setTextScalingH() -> Any: ...  # TODO fill in return
+def setTextScalingV() -> Any: ...  # TODO fill in return
+def setTextShade() -> Any: ...  # TODO fill in return
+def setTextStroke() -> Any: ...  # TODO fill in return
+def setTextVerticalAlignment() -> Any: ...  # TODO fill in return
+
+# =======
+# # Text Frames
+# =======
+
+def selectFrameText() -> Any: ...  # TODO fill in return
+def selectText(start: int, count: int, name: str = "") -> None: ...
+def setColumnGap() -> Any: ...  # TODO fill in return
+def setFont(fontName: str, textObj: str = "") -> None: ...
+def setFontFeatures() -> Any: ...  # TODO fill in return
+def setFontSize(size: float, name: str = "") -> None: ...
+def setMinWordTracking() -> Any: ...  # TODO fill in return
+def setRowGuides() -> Any: ...  # TODO fill in return
+def setTracking() -> Any: ...  # TODO fill in return
+def setWordTracking() -> Any: ...  # TODO fill in return
+def textOverflows() -> Any: ...  # TODO fill in return
+def unlinkTextFrames() -> Any: ...  # TODO fill in return
+
+# =======
+# # Image
+# =======
+
+def getImageColorSpace() -> Any: ...  # TODO fill in return
+def getImageFile() -> Any: ...  # TODO fill in return
+def getImageOffset() -> Any: ...  # TODO fill in return
+def getImagePage() -> Any: ...  # TODO fill in return
+def getImagePageCount() -> Any: ...  # TODO fill in return
+def getImagePpi() -> Any: ...  # TODO fill in return
+def getImagePreviewResolution() -> Any: ...  # TODO fill in return
+def getImageScale() -> Any: ...  # TODO fill in return
+def scaleImage() -> Any: ...  # TODO fill in return
+def setImageBrightness() -> Any: ...  # TODO fill in return
+def setImageGrayscale() -> Any: ...  # TODO fill in return
+def setImageOffset() -> Any: ...  # TODO fill in return
+def setImagePage() -> Any: ...  # TODO fill in return
+def setImagePreviewResolution() -> Any: ...  # TODO fill in return
+def setImageScale() -> Any: ...  # TODO fill in return
+def setScaleFrameToImage() -> Any: ...  # TODO fill in return
+def setScaleImageToFrame() -> Any: ...  # TODO fill in return
+
+# =======
 # # Misc
 # =======
 def createPathText() -> Any: ...  # TODO fill in return
@@ -768,7 +1043,6 @@ def createPdfAnnotation() -> Any: ...  # TODO fill in return
 def currentPageNumberForSection() -> Any: ...  # TODO fill in return
 def dehyphenateText() -> Any: ...  # TODO fill in return
 def deleteColor() -> Any: ...  # TODO fill in return
-def deleteMasterPage() -> Any: ...  # TODO fill in return
 def deleteObject() -> Any: ...  # TODO fill in return
 def deletePage() -> Any: ...  # TODO fill in return
 def deleteText() -> Any: ...  # TODO fill in return
@@ -789,41 +1063,14 @@ def getAllText() -> Any: ...  # TODO fill in return
 def getBaseLine() -> Any: ...  # TODO fill in return
 def getBleeds() -> Any: ...  # TODO fill in return
 def getBoundingBox() -> Any: ...  # TODO fill in return
-def getCharStyles() -> Any: ...  # TODO fill in return
-def getCharacterStyle() -> Any: ...  # TODO fill in return
 def getColumnGap() -> Any: ...  # TODO fill in return
 def getColumnGuides() -> Any: ...  # TODO fill in return
 def getColumns() -> Any: ...  # TODO fill in return
-def getCornerRadius() -> Any: ...  # TODO fill in return
 def getCurrentPageSize() -> Any: ...  # TODO fill in return
 def getCustomLineStyle() -> Any: ...  # TODO fill in return
-def getDocName() -> str: ...
-def getFillBlendmode() -> Any: ...  # TODO fill in return
-def getFillColor() -> Any: ...  # TODO fill in return
-def getFillShade() -> Any: ...  # TODO fill in return
-def getFillTransparency() -> Any: ...  # TODO fill in return
-def getFirstLineOffset() -> Any: ...  # TODO fill in return
-def getFirstLinkedFrame() -> Any: ...  # TODO fill in return
-def getFont() -> Any: ...  # TODO fill in return
-def getFontFeatures() -> Any: ...  # TODO fill in return
-def getFontNames() -> Any: ...  # TODO fill in return
-def getFontSize() -> Any: ...  # TODO fill in return
-def getFrameSelectedTextRange() -> Any: ...  # TODO fill in return
-def getText() -> Any: ...  # TODO fill in return
-def getGradientStop() -> Any: ...  # TODO fill in return
-def getGradientStopsCount() -> Any: ...  # TODO fill in return
-def getGradientVector() -> Any: ...  # TODO fill in return
 def getGroupItems() -> Any: ...  # TODO fill in return
 def getGuiLanguage() -> Any: ...  # TODO fill in return
 def getHGuides() -> Any: ...  # TODO fill in return
-def getImageColorSpace() -> Any: ...  # TODO fill in return
-def getImageFile() -> Any: ...  # TODO fill in return
-def getImageOffset() -> Any: ...  # TODO fill in return
-def getImagePage() -> Any: ...  # TODO fill in return
-def getImagePageCount() -> Any: ...  # TODO fill in return
-def getImagePpi() -> Any: ...  # TODO fill in return
-def getImagePreviewResolution() -> Any: ...  # TODO fill in return
-def getImageScale() -> Any: ...  # TODO fill in return
 def getInfo() -> Any: ...  # TODO fill in return
 def getItemPageNumber(name: str) -> int: ...
 def getJSActionScript() -> Any: ...  # TODO fill in return
@@ -838,64 +1085,36 @@ def getLineSpacingMode() -> Any: ...  # TODO fill in return
 def getLineTransparency() -> Any: ...  # TODO fill in return
 def getLineWidth() -> Any: ...  # TODO fill in return
 def getMargins() -> Any: ...  # TODO fill in return
-def getMinWordTracking() -> Any: ...  # TODO fill in return
-def getNextLinkedFrame() -> Any: ...  # TODO fill in return
 def getObjectAttributes() -> Any: ...  # TODO fill in return
 def getObjectType() -> Any: ...  # TODO fill in return
-def getPageNSize(nr: int) -> tuple[float, float]: ...
-def pageDimension() -> tuple[float, float]: ...
 def getStyle(objectName: str = "") -> str | None: ...
-def getPosition() -> Any: ...  # TODO fill in return
-def getPrevLinkedFrame() -> Any: ...  # TODO fill in return
 def getProperty() -> Any: ...  # TODO fill in return
 def getPropertyCType() -> Any: ...  # TODO fill in return
-def getPropertyNames() -> Any: ...  # TODO fill in return
-def getRotation() -> Any: ...  # TODO fill in return
+def getPropertyNames() -> Any: ...
 def getRowGuides() -> Any: ...  # TODO fill in return
 def getSelectedObject() -> str: ...
-def getSelectedTextRange() -> Any: ...  # TODO fill in return
-def getSize() -> tuple[float, float]: ...
-def getTextColor() -> Any: ...  # TODO fill in return
-def getTextDistances() -> Any: ...  # TODO fill in return
-def getTextFlowMode() -> Any: ...  # TODO fill in return
-def getTextLength(texObj: str = "") -> int: ...
-def getTextLines() -> Any: ...  # TODO fill in return
-def getTextShade() -> Any: ...  # TODO fill in return
-def getTextVerticalAlignment() -> Any: ...  # TODO fill in return
 def getTracking() -> Any: ...  # TODO fill in return
-def getUnit() -> int:
-    """
-    Returns the measurement units of the document. The returned value will be
-    one of the UNIT_* constants:
-        * UNIT_INCHES
-        * UNIT_MILLIMETERS
-        * UNIT_PICAS
-        * UNIT_POINTS
-    """
-    ...
-
 def getVGuides() -> Any: ...  # TODO fill in return
 def getVisualBoundingBox() -> Any: ...  # TODO fill in return
 def getWordTracking() -> Any: ...  # TODO fill in return
 def getXFontNames() -> Any: ...  # TODO fill in return
 def getval() -> Any: ...  # TODO fill in return
-def gotoPage(pageNr: int) -> None: ...  # TODO need to fill in return
 def groupObjects(objects: list[str]) -> Any: ...  # TODO fill in return
 def hyphenateText() -> Any: ...  # TODO fill in return
+def insertText() -> Any: ...  # TODO fill in return
+def layoutText() -> Any: ...  # TODO fill in return
+def layoutTextChain() -> Any: ...  # TODO fill in return
+def linkTextFrames() -> Any: ...  # TODO fill in return
 def importPage() -> Any: ...  # TODO fill in return
 def insertHtmlText() -> Any: ...  # TODO fill in return
 def insertTableColumns() -> Any: ...  # TODO fill in return
 def insertTableRows() -> Any: ...  # TODO fill in return
-def insertText() -> Any: ...  # TODO fill in return
 def isAnnotated() -> Any: ...  # TODO fill in return
 def isExportable() -> Any: ...  # TODO fill in return
 def isLocked() -> Any: ...  # TODO fill in return
 def isPDFBookmark() -> Any: ...  # TODO fill in return
 def isSpotColor() -> Any: ...  # TODO fill in return
 def itemDialog() -> Any: ...  # TODO fill in return
-def layoutText() -> Any: ...  # TODO fill in return
-def layoutTextChain() -> Any: ...  # TODO fill in return
-def linkTextFrames() -> Any: ...  # TODO fill in return
 def loadImage() -> Any: ...  # TODO fill in return
 def loadStylesFromFile() -> Any: ...  # TODO fill in return
 def lockObject() -> Any: ...  # TODO fill in return
@@ -908,120 +1127,63 @@ def mergeTableCells(
     numColumns: int,
     name: str | None = None,
 ) -> None: ...
-def messageBox() -> Any: ...  # TODO fill in return
-def statusMessage() -> Any: ...  # TODO fill in return
-def newPage(where: int, masterPage: str = "") -> None: ...
 def newStyleDialog() -> Any: ...  # TODO fill in return
 def objectExists() -> Any: ...  # TODO fill in return
 def traceText() -> Any: ...  # TODO fill in return
-def pageCount() -> int: ...
 def placeVectorFile() -> Any: ...  # TODO fill in return
-def pointsToDocUnit(points: float) -> float:
-    """
-    Returns a value in the measurement units of the document converted from points.
-    """
-    ...
-
-def progressReset() -> Any: ...  # TODO fill in return
-def progressSet(progress: float) -> Any: ...  # TODO fill in return
-def progressTotal() -> Any: ...  # TODO fill in return
 def readPDFOptions() -> Any: ...  # TODO fill in return
 def redrawAll() -> Any: ...  # TODO fill in return
-def removeTableColumns() -> Any: ...  # TODO fill in return
-def removeTableRows() -> Any: ...  # TODO fill in return
 def renderFont() -> Any: ...  # TODO fill in return
 def replaceColor() -> Any: ...  # TODO fill in return
-def resizeTableColumn() -> Any: ...  # TODO fill in return
-def resizeTableRow() -> Any: ...  # TODO fill in return
 def retval() -> Any: ...  # TODO fill in return
-def revertDoc() -> Any: ...  # TODO fill in return
-def rotateObject() -> Any: ...  # TODO fill in return
-def setRotation() -> Any: ...  # TODO fill in return
-def saveDoc() -> None: ...
-def saveDocAs(newName: str) -> None: ...
 def savePDFOptions() -> Any: ...  # TODO fill in return
 def savePageAsEPS() -> Any: ...  # TODO fill in return
 def scaleGroup(factor: float, name: str = "") -> None: ...
-def scaleImage() -> Any: ...  # TODO fill in return
-def scrollDocument() -> Any: ...  # TODO fill in return
-def selectFrameText() -> Any: ...  # TODO fill in return
-def selectText(start: int, count: int, name: str = "") -> None: ...
 def selectionCount() -> Any: ...  # TODO fill in return
-def setBaseLine() -> Any: ...  # TODO fill in return
-def setBleeds() -> Any: ...  # TODO fill in return
-def setCharacterStyle() -> Any: ...  # TODO fill in return
-def setColumnGap() -> Any: ...  # TODO fill in return
-def setColumnGuides() -> Any: ...  # TODO fill in return
 def setColumns() -> Any: ...  # TODO fill in return
 def setCornerRadius() -> Any: ...  # TODO fill in return
-def setCurrentPageSize() -> Any: ...  # TODO fill in return
 def setCursor() -> Any: ...  # TODO fill in return
 def setCustomLineStyle() -> Any: ...  # TODO fill in return
-def setDocType(
-    facingPages: int, firstPageLeft: int
-) -> None: ...  # TODO need to fill in return
 def setEditMode() -> Any: ...  # TODO fill in return
 def setExportableObject() -> Any: ...  # TODO fill in return
 def setFileAnnotation() -> Any: ...  # TODO fill in return
-def setFillBlendmode() -> Any: ...  # TODO fill in return
-def setFillColor() -> Any: ...  # TODO fill in return
-def setFillShade() -> Any: ...  # TODO fill in return
-def setFillTransparency() -> Any: ...  # TODO fill in return
 def setFirstLineOffset() -> Any: ...  # TODO fill in return
-def setFont(fontName: str, textObj: str = "") -> None: ...
-def setFontFeatures() -> Any: ...  # TODO fill in return
-def setFontSize(size: float, name: str = "") -> None: ...
-def setGradientFill() -> Any: ...  # TODO fill in return
-def setGradientStop() -> Any: ...  # TODO fill in return
-def setGradientVector() -> Any: ...  # TODO fill in return
 def setHGuides() -> Any: ...  # TODO fill in return
-def setImageBrightness() -> Any: ...  # TODO fill in return
-def setImageGrayscale() -> Any: ...  # TODO fill in return
-def setImageOffset() -> Any: ...  # TODO fill in return
-def setImagePage() -> Any: ...  # TODO fill in return
-def setImagePreviewResolution() -> Any: ...  # TODO fill in return
-def setImageScale() -> Any: ...  # TODO fill in return
 def setInfo() -> Any: ...  # TODO fill in return
 def setItemName(newName: str, name: str = "") -> str: ...
 def setNewName(newName: str, name: str = "") -> str: ...
 def setJSActionScript() -> Any: ...  # TODO fill in return
-def setLineBlendmode() -> Any: ...  # TODO fill in return
 def setLinkAnnotation() -> Any: ...  # TODO fill in return
-def setMargins() -> Any: ...  # TODO fill in return
-def setMinWordTracking() -> Any: ...  # TODO fill in return
 def setMultiLine() -> Any: ...  # TODO fill in return
 def setNormalMode() -> Any: ...  # TODO fill in return
-def setObjectAttributes() -> Any: ...  # TODO fill in return
 def setPDFBookmark() -> Any: ...  # TODO fill in return
 def setStyle() -> Any: ...  # TODO fill in return
 def setProperty() -> Any: ...  # TODO fill in return
 def setRedraw(redraw: bool) -> None: ...  # TODO need to fill in return
-def setRowGuides() -> Any: ...  # TODO fill in return
-def setScaleFrameToImage() -> Any: ...  # TODO fill in return
-def setScaleImageToFrame() -> Any: ...  # TODO fill in return
 def setSpotColor() -> Any: ...  # TODO fill in return
-def setText(text: str, name: str = "") -> None: ...
-def setTextAlignment(align: int, name: str = None) -> None: ...
-def setTextAnnotation() -> Any: ...  # TODO fill in return
-def setTextColor(color: str, name: str = "") -> None: ...
-def setTextDirection() -> Any: ...  # TODO fill in return
-def setTextDistances() -> Any: ...  # TODO fill in return
-def textFlowMode() -> Any: ...  # TODO fill in return
-def setTextScalingH() -> Any: ...  # TODO fill in return
-def setTextScalingV() -> Any: ...  # TODO fill in return
-def setTextShade() -> Any: ...  # TODO fill in return
-def setTextStroke() -> Any: ...  # TODO fill in return
-def setTextVerticalAlignment() -> Any: ...  # TODO fill in return
-def setTracking() -> Any: ...  # TODO fill in return
+def setCurrentPageSize() -> Any: ...  # TODO fill in return
 def setURIAnnotation() -> Any: ...  # TODO fill in return
+def revertDoc() -> Any: ...  # TODO fill in return
+def setColumnGuides() -> Any: ...  # TODO fill in return
 def setUnit() -> Any: ...  # TODO fill in return
 def setVGuides() -> Any: ...  # TODO fill in return
-def setWordTracking() -> Any: ...  # TODO fill in return
+def rotateObject(rot: int | float, name: str = "") -> None:
+    """
+    rotateObject(rot [, "name"])
+
+    Rotates the object "name" by "rot" degrees relatively. The object is rotated
+    by the vertex that is currently selected as the rotation point - by default,
+    the top left vertex at zero rotation. Positive values mean counter clockwise
+    rotation when the default rotation point is used. If "name" is not given the
+    currently selected item is used.
+    """
+    ...
+
+def setObjectAttributes() -> Any: ...  # TODO fill in return
+def setRotation() -> Any: ...  # TODO fill in return
 def sizeObject() -> Any: ...  # TODO fill in return
-def stringValueToPoints() -> Any: ...  # TODO fill in return
-def textOverflows() -> Any: ...  # TODO fill in return
 def unGroupObjects() -> Any: ...  # TODO fill in return
-def unlinkTextFrames() -> Any: ...  # TODO fill in return
+def stringValueToPoints() -> Any: ...  # TODO fill in return
 def valueDialog(caption: str, message: str, defaultvalue: str = "") -> str:
     """
     Shows the common 'Ask for string' dialog and returns its value as a string
@@ -1031,6 +1193,7 @@ def valueDialog(caption: str, message: str, defaultvalue: str = "") -> str:
     """
     ...
 
+def setMargins() -> Any: ...  # TODO fill in return
 def zoomDocument(zoom: float) -> None:
     """
     Zoom the document in main GUI window. Actions have whole number values like

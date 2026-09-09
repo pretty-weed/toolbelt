@@ -1,10 +1,10 @@
 import datetime
-from enum import auto, unique, Enum, IntEnum, StrEnum
+from enum import EnumMeta, Flag, auto, unique, Enum, IntEnum, StrEnum
 import logging
 from multiprocessing import Value
 from typing import ClassVar, Self, Tuple, override
 
-from dandy_lib.datatypes.twodee import Number
+from dandy_lib.datatypes.twodee import Number, Size
 from dandy_lib.cli.enums import ChoiceEnumMeta, ChoiceEnumMixin
 import scribus
 
@@ -14,14 +14,17 @@ from dandiscribe.log import configure
 LOGGER: logging.Logger = configure(__name__)
 
 
-class PaperSize(
-    ChoiceEnumMixin, tuple[float, float], Enum, metaclass=ChoiceEnumMeta
-):
+class PaperSize(ChoiceEnumMixin, Size, Enum, metaclass=ChoiceEnumMeta):
     LETTER = scribus.PAPER_LETTER
     LEGAL = scribus.PAPER_LEGAL
     A5 = scribus.PAPER_A5
     A4 = scribus.PAPER_A4
     LETTER_HALF = (LETTER[1] / 2.0, LETTER[0])
+
+    def for_scribus(self, unit=None) -> tuple[float, float]:
+        if unit is None:
+            return (self.width, self.height)
+        raise NotImplementedError("no unit stuff hyurr")
 
 
 class COLORS(StrEnum):
@@ -88,9 +91,29 @@ class FontFaces(StrEnum):
 
 
 class LinespacingMode(IntEnum):
+    """
+    These are not provided as consts in scribus, but are described in function
+    help
+    """
+
     FIXED = 0
     AUTOMATIC = 1
     BASELINE_GRID = 2
+
+
+class InsertPaddingPages(ChoiceEnumMixin, IntEnum, metaclass=ChoiceEnumMeta):
+    NO = 0
+    BEGINNING = 1
+    END = 2
+
+    @override
+    def __bool__(self) -> bool:
+        return bool(self.value)
+
+
+class Orientation(IntEnum):
+    LANDSCAPE = scribus.LANDSCAPE
+    PORTRAIT = scribus.PORTRAIT
 
 
 class UnitType:

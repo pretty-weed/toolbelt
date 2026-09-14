@@ -13,6 +13,7 @@ from pylatex.base_classes import Environment
 from pylatex.basic import NewLine
 from pylatex.utils import NoEscape, bold, italic
 from pyzotero import Zotero
+from pyzotero.errors import UnsupportedParamsError
 from yaml import SafeDumper, SafeLoader, safe_dump, safe_load
 from yaml.nodes import ScalarNode
 
@@ -45,11 +46,16 @@ class Zot(Zotero):
         query_res = self.item(itemKey, limit=query_limit, start=start, **kwargs)
         if query_res["data"]["itemType"] == "annotation":
             res.append(query_res)
-        for child in self.children(itemKey):
-            if child["data"]["itemType"] == "annotation":
-                res.append(child)
-            else:
-                res.extend(self.get_item_annotations(child).values())
+        try:
+            children = self.children(itemKey)
+        except UnsupportedParamsError:
+            pass
+        else:
+            for child in children:
+                if child["data"]["itemType"] == "annotation":
+                    res.append(child)
+                else:
+                    res.extend(self.get_item_annotations(child["key"]))
 
         return res
 
@@ -63,8 +69,6 @@ class Zot(Zotero):
     def top_item(self, item_id: str) -> dict[str, Any]:
         item = self.item(item_id)
         while item["data"].get("parentItem"):
-            print(item)
-            print()
             item = self.item(item["data"]["parentItem"])
         return item
 
@@ -200,13 +204,14 @@ def make_latex(
                         )
                     )
                 ):
-                    doc.append(annot["data"]["annotationText"])
+                    if "annotationText" in annot["data"]:
+                        doc.append(annot["data"]["annotationText"])
                     doc.append(
                         italic(f"({annot['data']['annotationPageLabel']})")
                     )
                     comment = annot["data"].get("annotationComment")
                     if comment:
-                        doc.append(NoEscape(r"{ \tcblower }"))
+                        doc.append(NoEscape(r"\tcblower"))
                         doc.append(bold("Comment: "))
                         doc.append(comment)
                         doc.append(NewLine())
@@ -228,12 +233,12 @@ def get():
     _ = parser.add_argument("--query", "-q", action="append")
     _ = parser.add_argument("--item", "-i", action="append")
     _ = parser.add_argument("--count", "-C", type=int, default=100)
+    _ = parser.add_argument("--quiet", "-Q", action="store_true")
     _ = parser.add_argument(
         "--output", "-o", choices=["yaml", "latex"], default="yaml"
     )
     _ = parser.add_argument("--outfile", "-O")
     parsed = parser.parse_args()
-    print(parsed, config)
 
     if parsed.local:
         zot = Zot("0", "user", local=True)
@@ -242,26 +247,26 @@ def get():
     res = []
     items = list(parsed.item or [])
     queries = list(parsed.query or [])
-    print(items)
-    print(queries)
     for item in items:
         q_res = zot.item(item)
-        print(f"q res is {q_res}")
         if q_res:
             res.extend(zot.get_item_annotations(q_res["data"]["key"]))
 
     q_starts = dict[str, int]((q, 0) for q in queries)
     while queries and len(res) < parsed.count:
-        for q in list(queries):
+        for query in list(queries):
 
-            q_res: list[dict[str, Any]] = zot.items(q=q, start=q_starts[q])
-            q_starts[q] += len(q_res)
+            q_res: list[dict[str, Any]] = zot.items(
+                q=query, start=q_starts[query]
+            )
+            q_starts[query] += len(q_res)
+
             if not q_res:
-                queries.remove(q)
+                queries.remove(query)
 
             for r in q_res:
-                atts = zot.get_attachment_annotations(r)
-                res.extend(atts)
+                annots = zot.get_item_annotations(r["key"])
+                res.extend(annots)
     collected_res: dict[str, tuple[dict[str, Any], list[dict[str, Any]]]] = {}
     for r in res:
         parent = zot.top_item(r["key"])
@@ -276,8 +281,9 @@ def get():
             to_output = make_latex(collected_res)
     if parsed.outfile:
         Path(parsed.outfile).write_text(to_output)
-    print(f"found {len(res)} items")
-    print(to_output)
+    if not parsed.quiet:
+        print(f"found {len(res)} items")
+        print(to_output)
 
 
 get()

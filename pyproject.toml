@@ -17,16 +17,19 @@ dependencies = [
     "platformdirs~=4.3.6",
     "pypdf~=6.1",
     "texsoup~=0.3",
-    "dandy_lib@git+http://github.com/pretty-weed/py_libs@v0.12.3",
+    "dandy_lib@git+http://github.com/pretty-weed/py_libs@v1.1.0",
 ]
 
-[tool.setuptools.dynamic]
-readme = {file = ["README.md"], content-type = "text/markdown"}
 
-[tool.setuptools.package-data]
-dandiscribe = ["routines.yml", "fonts/OFL.txt", "fonts/*/*.ttf", "fonts/*/*.otf", "source_files/*.sla"]
-
-danditools = ["type_stubs/py.typed"]
+[project.scripts]
+scraper = "danditools.scraper:main"
+xrandr-parse = "danditools.xrandr_parse:main"
+blog-combine = "danditools.blog_combine:main"
+cleanup-transcript = "danditools.cleanup_transcript:main"
+cat-html = "danditools.cat_html:main"
+pdf-split = "danditools.pdf:split"
+pdf-demo = "danditools.pdf:demo"
+tex-wc = "danditex.word_count:main"
 
 [project.optional-dependencies]
 test = ["tox~=4.28"]
@@ -55,6 +58,16 @@ type = [
 clean = [
     "coverage~=7.12"
 ]
+
+
+[tool.setuptools.dynamic]
+readme = {file = ["README.md"], content-type = "text/markdown"}
+
+[tool.setuptools.package-data]
+dandiscribe = ["routines.yml", "fonts/OFL.txt", "fonts/*/*.ttf", "fonts/*/*.otf", "source_files/*.sla"]
+
+danditools = ["type_stubs/py.typed"]
+
 
 
 [tool.tox]
@@ -108,16 +121,6 @@ reportMissingImports = "error"
 reportMissingTypeStubs = "warning"
 reportPrivateUsage = "warning"
 reportUnknownMemberType = true
-
-[project.scripts]
-scraper = "danditools.scraper:main"
-xrandr-parse = "danditools.xrandr_parse:main"
-blog-combine = "danditools.blog_combine:main"
-cleanup-transcript = "danditools.cleanup_transcript:main"
-cat-html = "danditools.cat_html:main"
-pdf-split = "danditools.pdf:split"
-pdf-demo = "danditools.pdf:demo"
-tex-wc = "danditex.word_count:main"
 
 [tool.setuptools_scm]
 

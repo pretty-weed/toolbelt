@@ -1,19 +1,13 @@
 import cProfile
-import calendar
-from collections import namedtuple
-from dataclasses import dataclass, field, InitVar
+import time
+from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
-from enum import Enum, StrEnum
-from functools import cache, partial
-from itertools import chain
-from logging import basicConfig, getLogger, DEBUG, INFO, WARNING
-from os import getenv
+from logging import DEBUG, INFO, basicConfig, getLogger
 from pathlib import Path
-from re import compile, Match
+from re import Match, compile
 from typing import Any
 
 import scribus
-import time
 import yaml
 
 # set up logging before local imports
@@ -26,35 +20,28 @@ basicConfig(
     format="%(asctime)s %(levelname)-8s %(message)s",
 )
 
-import dandiscribe.colors as colors
-from dandiscribe.enums import COLORS, FILL, PAGESIDE, FontFaces
-from dandiscribe.data import Margins
-from .data import Event, Task
-from dandiscribe.exceptions import NewDocError
-from dandiscribe.layout import Page, SpreadPage
-from dandiscribe.objects import Box, Column, ColumnSection
-import dandiscribe.style as style
-from dandiscribe.util import (
-    cache_val,
-    clear_cache_val,
-    get_cache_val,
-    ok_to_ignore_dialog,
-    Debug,
-    MISSING,
-    PauseDrawing,
-    TempGoTo,
-)
 
-import dandiscribe.calendar.data as data
+from dandiscribe import colors
 from dandiscribe.calendar.pages import (
-    gen_notes_spread_pages,
     A5FrontPage,
     A5MonthSpreadPage,
     A5NotesPage,
     A5WeekSpreadPage,
-    MonthSpreadPage,
-    WeekSpreadPage,
+    gen_notes_spread_pages,
 )
+from dandiscribe.enums import PAGESIDE
+from dandiscribe.exceptions import NewDocError
+from dandiscribe.layout import Page
+from dandiscribe.util import (
+    MISSING,
+    Debug,
+    PauseDrawing,
+    cache_val,
+    clear_cache_val,
+    get_cache_val,
+)
+
+from .data import Event, Task
 
 PROFILE = True
 
@@ -150,7 +137,7 @@ class Document:
                 scribus.progressSet((done + 1) // total)
                 master_page = page.as_master_page()
                 self.masterpages[page.master_page] = master_page
-                master_page.draw(master=True, tasks=tasks)
+                master_page.draw(tasks=tasks)
                 done += 1
 
                 assert all([pg.is_master for pg in self.masterpages.values()])
@@ -241,21 +228,20 @@ def make_doc(routines_file=ROUTINES_FILE) -> Document:
             event_by_date.setdefault(
                 start_date + timedelta(days=day_n), []
             ).append(event)
-        else:
-            continue
+        continue
     logger.info("starting pages")
 
     pages = [
         A5FrontPage(page_number=1, page_date=first_page_date),
         A5MonthSpreadPage(
             page_number=2,
-            master_page=f"month-left",
+            master_page="month-left",
             side=PAGESIDE.LEFT,
             page_date=first_page_date.replace(day=1),
         ),
         A5MonthSpreadPage(
             page_number=3,
-            master_page=f"month-right",
+            master_page="month-right",
             side=PAGESIDE.RIGHT,
             page_date=first_page_date.replace(day=1),
         ),
@@ -318,6 +304,7 @@ def make_doc(routines_file=ROUTINES_FILE) -> Document:
 def entry_point(routines_file=ROUTINES_FILE, profile=PROFILE, debug=False):
     logger.info("entered entry point")
     with Debug("main", enabled=debug) as main_debug:
+        main_debug.set_break()
         if profile:
             profile_path = (
                 Path()

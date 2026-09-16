@@ -1,33 +1,30 @@
-from copy import copy
-from collections.abc import Collection
-from dataclasses import MISSING, dataclass, field
 import datetime
+from collections.abc import Callable, Collection
+from copy import copy
+from dataclasses import MISSING, dataclass, field
 from functools import partial
-from typing import Callable, NamedTuple
-
-from dandy_lib.datatypes.twodee import Size
-
-from dandiscribe.objects import Box, Column, ColumnSection
-from dandiscribe.data import Margins
-from dandiscribe.calendar.data import (
-    get_tasks,
-    tasks_by_routine_day_and_time,
-    Event,
-    Task,
-    TIME_OF_DAY,
-)
-from dandiscribe.calendar.layout import MonthDay, WeekCalToDSection
-from dandiscribe.enums import COLORS, FontFaces, PAGESIDE, HAlign
-from dandiscribe.layout import SpreadPage, Page
-import dandiscribe.style as style
-
-from .data import Task, Event
 
 import scribus
+from dandy_lib.datatypes.twodee import Size
+
+from dandiscribe import style
+from dandiscribe.calendar.data import TIME_OF_DAY, Task
+from dandiscribe.enums import COLORS, PAGESIDE, FontFaces
+from dandiscribe.layout import Page, SpreadPage
+from dandiscribe.objects import Box, Column, ColumnSection
+
+from .data import (
+    TIME_OF_DAY,
+    Event,
+    Task,
+    get_tasks,
+    tasks_by_routine_day_and_time,
+)
+from .layout import MonthDay, WeekCalToDSection
 
 
-class CalendarPage(NamedTuple):
-    page: Page
+@dataclass
+class CalendarPage(Page):
     page_date: datetime.date = field(default_factory=datetime.date.today)
 
     def draw(
@@ -50,7 +47,7 @@ class CalendarMasterPage:
 
 
 @dataclass(kw_only=True)
-class NotesSpread(CalendarPage, SpreadPage):
+class NotesSpread(SpreadPage, CalendarPage):
     columns: int = 1
     rows: int = 1
     row_max_offset: int = 0
@@ -68,7 +65,7 @@ class NotesSpread(CalendarPage, SpreadPage):
 
         super().draw(master=master)
         with self:
-            margins, usable_size = self._get_margins_and_usable_size()
+            margins, usable_size = self.get_margins_and_usable_size()
             usable_width, usable_height = usable_size
             draw_master: bool = master is None or bool(master)
 
@@ -85,8 +82,8 @@ class NotesSpread(CalendarPage, SpreadPage):
                 return style.fill_lined_basic(
                     margins.left,
                     margins.top + 20,
-                    usable_width,
-                    usable_height - 21,
+                    int(usable_width),
+                    int(usable_height) - 21,
                     draw_master,
                 )
 
@@ -135,8 +132,6 @@ class MonthSpreadPage(CalendarPage, SpreadPage):
 
             col_width = usable_width // 4
 
-            row_height = usable_height // 5
-
             if self.side == PAGESIDE.RIGHT:
                 col_week_days = zip(
                     range(5, 8), ["Friday", "Saturday", "Sunday"]
@@ -150,47 +145,46 @@ class MonthSpreadPage(CalendarPage, SpreadPage):
                     )
                 )
 
-            cal_cols = dict(
-                (
-                    day,
-                    Column(
-                        sections=[
-                            ColumnSection(
-                                title=day_name,
-                                title_in_master=True,
-                                title_style=style.MONTH_CAL_DAY_HDR_STYLE,
-                                title_line_style=style.LineStyle(2),
-                                title_min_y=16,
-                            )
-                        ]
-                        + []
-                        + [
-                            MonthDay.create(
-                                day=day,
-                                week=week,
-                                first_date=first_date,
-                                boxes=[Box(rows=3, sub_rows=2)],
-                                page_month=page_month,
-                                # todo "due" tasks
-                                tasks=get_tasks(
+            cal_cols = {
+                day: Column(
+                    sections=[
+                        ColumnSection(
+                            title=day_name,
+                            title_in_master=True,
+                            title_style=style.MONTH_CAL_DAY_HDR_STYLE,
+                            title_line_style=style.LineStyle(2),
+                            title_min_y=16,
+                        )
+                    ]
+                    + []
+                    + [
+                        MonthDay.create(
+                            day=day,
+                            week=week,
+                            first_date=first_date,
+                            boxes=[Box(rows=3, sub_rows=2)],
+                            page_month=page_month,
+                            # todo "due" tasks
+                            tasks=list(
+                                get_tasks(
                                     tasks,
                                     first_date
                                     + datetime.timedelta(days=day, weeks=week),
                                     remove_routine=True,
-                                ),
-                                events=events.get(
-                                    first_date
-                                    + datetime.timedelta(days=day, weeks=week),
-                                    [],
-                                ),
-                            )
-                            for week in range(5)
-                        ],
-                        divider_line=style.LineStyle(weight=1.5, style=1),
-                    ),
+                                )
+                            ),
+                            events=events.get(
+                                first_date
+                                + datetime.timedelta(days=day, weeks=week),
+                                [],
+                            ),
+                        )
+                        for week in range(5)
+                    ],
+                    divider_line=style.LineStyle(weight=1.5, style=1),
                 )
                 for day, day_name in col_week_days
-            )
+            }
             if not draw_master:
                 month_name = scribus.createText(
                     margins.left + 20, margins.top + 20, usable_width - 40, 35
@@ -276,6 +270,19 @@ class WeekSpreadPage(CalendarPage, SpreadPage):
         ]
     )
 
+    @classmethod
+    def new(
+        cls,
+        page_number: int,
+        master_page: str,
+        side: PAGESIDE,
+        page_date: datetime.date,
+    ) -> Self:
+        return cls(
+            page=page_number,
+            page_date=page_date,
+        )
+
     def draw(
         self,
         master: str | None = None,
@@ -289,14 +296,16 @@ class WeekSpreadPage(CalendarPage, SpreadPage):
 
         margins, usable_size = self._get_margins_and_usable_size()
         usable_width, usable_height = usable_size
-        tasks_by_day_and_time = tasks_by_routine_day_and_time(
-            tasks,
-            valid_times=[
-                TIME_OF_DAY.MORNING,
-                TIME_OF_DAY.AFTERNOON,
-                TIME_OF_DAY.EVENING_AND_NIGHT,
-            ],
-        )
+        tasks_by_day_and_time: dict[int, dict[TIME_OF_DAY, list[Task]]] = {}
+        if tasks is not None:
+            tasks_by_day_and_time = tasks_by_routine_day_and_time(
+                tasks,
+                valid_times=[
+                    TIME_OF_DAY.MORNING,
+                    TIME_OF_DAY.AFTERNOON,
+                    TIME_OF_DAY.EVENING_AND_NIGHT,
+                ],
+            )
 
         gutter_height = usable_height - 40
         col_height = usable_height - 20

@@ -1,0 +1,68 @@
+version: "3"
+vars:
+  PATH: >-
+    {{if or (env "VIRTUAL_ENV") (env "CONDA_DEFAULT_ENV")}}
+    {{env "PATH"}}
+    {{else}}
+    {{.USER_WORKING_DIR}}/{{.VENV_DIR}}/bin:{{env "PATH"}}
+    {{end}}
+tasks:
+
+  create-venv:
+    aliases: ["venv", "virtualenv"]
+    internal: true
+    vars:
+      VENV_CMD: '{{ .VIRTUALENV_CMD | default "virtualenv" }}'
+    status:
+      - test -n "{{ .VIRTUAL_ENV }}"
+      - test -d '{{ .VIRTUAL_ENV }}'
+    cmds:
+      - '{{ .VENV_CMD }} {{ .VIRTUAL_ENV }}'
+
+  install:
+    aliases: ["I"]
+    vars:
+      PACKAGE: '.'
+      ED_VAL: '{{ .EDITABLE | default "true" | trim | lower }}'
+      EDITABLE: '{{ if or  (eq .ED_VAL "t") (eq .ED_VAL "true" ) (eq .ED_VAL "1") }}-e {{ end}}'
+    preconditions:
+      # I would do this with requires:{vars:{name: enum:}} but that doesn't support a ref it seems
+      - cmd: ":" # TODO, fail if package is not a valid EXTRA
+    cmds:
+      # always do an editable install, as that caches the github dep
+      # ToDo: Make editable optional
+      - 'pip install {{ .CACHED_INSTALL_FLAGS }} {{ .EDITABLE }} {{ .PACKAGE }}'
+
+
+  install-tools:
+    deps:
+      - create-venv
+    status: &install_status
+      - pip show danditools | grep "Editable project location"
+    cmds:
+      - pip install -e '.[tooling]'
+
+  install-offline:
+    # ToDo: handle github with cached
+    aliases: ["offline-install", "Io"]
+    cmds:
+      - task: install
+        vars: {"OFFLINE": "darnTootin"}
+
+  install-brute:
+    aliases: ["brute-install", "Ib"]
+    cmds:
+      - 'pip wheel {{ .CACHED_INSTALL_FLAGS }} --no-deps {{ .ROOT_DIR}}'
+
+
+  install-shell-scripts:
+    aliases:
+      - install-scripts
+    vars:
+      INSTALL_DIR: '{{ .INSTALL_DIR | default .DEFAULT_BIN_DIR }}'
+    cmds:
+      - echo {{ .DEFAULT_BIN_DIR }}
+      - |
+        for fname in shelltools/*; do
+        test ! -e {{ .INSTALL_DIR }}/$fname && ln -s $(realpath "shelltools/${fname}") "{{.INSTALL_DIR}}/${fname}"
+        done

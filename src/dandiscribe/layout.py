@@ -1,21 +1,15 @@
-from dataclasses import asdict, dataclass, field
-from functools import lru_cache
 import logging
-from os import linesep
-from typing import Any, ClassVar, Literal, NamedTuple, Self, TypeVar
-
-from dandiscribe.enums import PAGESIDE
-from dandiscribe.exceptions import InvalidSheet, NewDocError
-from dandiscribe.log import configure
-
+from dataclasses import asdict, dataclass, field, fields
+from functools import lru_cache
+from typing import ClassVar, NamedTuple, Self, TypeVar
 
 import scribus
-
-from dandy_lib.datatypes.tuples import MixableNamedTuple
 from dandy_lib.datatypes.twodee import Size
 
 from dandiscribe.data import Margins
-
+from dandiscribe.enums import PAGESIDE
+from dandiscribe.exceptions import InvalidSheet, NewDocError
+from dandiscribe.log import configure
 
 LOGGER: logging.Logger = configure(__name__)
 
@@ -24,24 +18,21 @@ PAPER_A4: Size = Size(*scribus.PAPER_A4)
 PAPER_A5: Size = Size(*scribus.PAPER_A5)
 
 
-class Page(MixableNamedTuple):
-    page_number: int
+@dataclass
+class Page:
+    page_number: int = -1
     size: Size = Size.factory(*scribus.PAPER_A5)
     master_page: str | None = None
     is_master: bool = False
 
-    def as_page(self) -> "Page":
-        return self.__class__(**(self._asdict() | {"is_master": False}))
+    def as_page(self) -> Self:
+        return self.__class__(**(asdict(self) | {"is_master": False}))
 
-    def as_master_page(self) -> "Page":
+    def as_master_page(self) -> MasterPage:
+        print(dir(self))
+        page_fields = [f.name for f in fields(Page)]
         return MasterPage(
-            **(
-                dict(
-                    (k, v)
-                    for k, v in self._asdict().items()
-                    if k not in ["page_number", "is_master"]
-                )
-            )
+            **({k: v for k, v in asdict(self).items() if k in page_fields})
         )
 
     def get_margins_and_usable_size(self) -> tuple[Margins, Size]:
@@ -78,11 +69,13 @@ class Page(MixableNamedTuple):
 
     def make(self):
         if self.is_master:
+            if not self.master_page:
+                raise ValueError("Cannot have a nameless master page")
             scribus.createMasterPage(self.master_page)
             return
 
         while self.page_number >= scribus.pageCount():
-            scribus.newPage(-1, self.master_page)
+            scribus.newPage(-1, self.master_page or "")
 
     def draw(self, bake_master: bool = False) -> None:
 
@@ -99,10 +92,10 @@ class Page(MixableNamedTuple):
             scribus.applyMasterPage(master_page, self.page_number)
 
 
-class MasterPage(MixableNamedTuple, Page):
-
-    page_number: ClassVar[None] = None
-    is_master: ClassVar[bool] = True
+class MasterPage(Page):
+    is_master: ClassVar[bool] = (
+        True  # pyright: ignore[reportIncompatibleVariableOverride]
+    )
 
     @property
     def name(self) -> str:
@@ -112,10 +105,16 @@ class MasterPage(MixableNamedTuple, Page):
         return Page.draw(self)
 
 
-class SpreadPage(MixableNamedTuple, Page):
-    inside_margin: int
-    outside_margin: int
-    side: PAGESIDE
+@dataclass
+class SpreadPageMixin:
+    inside_margin: float = 72  # in points
+    outside_margin: float = 72  # in points
+    side: PAGESIDE = PAGESIDE.EITHER
+
+
+@dataclass
+class SpreadPage(Page, SpreadPageMixin):
+    pass
 
 
 class Sheet(NamedTuple):
@@ -149,7 +148,7 @@ def get_mpage_sizes() -> dict[str, Size]:
         # expected
         pass
     else:
-        raise EnvironmentError(
+        raise OSError(
             "Should not call get_mpage_sizes from within a master page"
         )
 
@@ -169,7 +168,7 @@ class Document:
     def from_current(cls) -> Self:
         LOGGER.debug("Creating doc from current")
         if not scribus.haveDoc():
-            raise EnvironmentError("No docs open")
+            raise OSError("No docs open")
         mpages: dict[str, MasterPage] = dict(
             (mp, MasterPage(mp, size=size))
             for mp, size in get_mpage_sizes().items()
@@ -192,12 +191,12 @@ class Document:
 
     @classmethod
     def create(
-        cls: type[Doc],
+        cls,
         page_count: int,
         page_size: Size,
         create_masters: bool = True,
         masters_begin: int = 2,
-    ) -> Doc:
+    ) -> Self:
         if create_masters:
             masters = dict(
                 (mpname, MasterPage(page_size, mpname))

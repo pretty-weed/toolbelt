@@ -1,23 +1,20 @@
 # get events from calendar url
 
-
+import calendar
 from collections.abc import Container, Iterator
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
-from enum import Enum
+from enum import Enum, EnumMeta, IntEnum
 from functools import cache
-from logging import getLogger, INFO
+from logging import INFO, getLogger
 from os import getenv
-from pathlib import Path, PurePath
-from typing import Any, Iterator, NamedTuple, Self, Union
-from urllib.parse import urlparse, ParseResult
+from pathlib import Path
+from typing import Any, NamedTuple, Self, TypeAlias, cast
 
 import icalendar
-from yaml import safe_load
 from requests import get
 from requests.exceptions import ConnectionError
-from icalendar import Calendar, Event
-
+from yaml import safe_load
 
 CONF_FILE = Path(
     getenv("CONF_FILE", Path().home().joinpath(".private", "calendars.yaml"))
@@ -27,8 +24,8 @@ logger.setLevel(INFO)
 
 
 class CalEvent(NamedTuple):
-    calendar: Calendar
-    event: Event
+    calendar: icalendar.Calendar
+    event: icalendar.Event
 
 
 def get_conf(filepath: Path = CONF_FILE) -> dict[str, Any]:
@@ -38,8 +35,10 @@ def get_conf(filepath: Path = CONF_FILE) -> dict[str, Any]:
     return safe_load(CONF_FILE.read_text())
 
 
-def get_calendars(calendar_name: str | None = None) -> dict[str, Calendar]:
-    calendars: dict[str, Calendar] = {}
+def get_calendars(
+    calendar_name: str | None = None,
+) -> dict[str, icalendar.Calendar]:
+    calendars: dict[str, icalendar.Calendar] = {}
     for calendar, url in get_conf().get("external_calendars", {}).items():
         if calendar_name is not None and calendar != calendar_name:
             continue
@@ -48,7 +47,7 @@ def get_calendars(calendar_name: str | None = None) -> dict[str, Calendar]:
         except ConnectionError:
             logger.exception("Failed to get calendar")
         else:
-            calendars[calendar] = Calendar.from_ical(res.text)  # type: ignore[assignment]
+            calendars[calendar] = icalendar.Calendar.from_ical(res.text)  # type: ignore[assignment]
             # ToDo maybe assert this is actually a calendar
     return calendars
 
@@ -70,8 +69,7 @@ def get_events(
     calendar_name: str | None = None,
 ) -> Iterator[CalEvent]:
 
-    if collated:
-        events: list[CalEvent] = []
+    events: list[CalEvent] = []
     for calendar in get_calendars(calendar_name).values():
         if collated:
             events.extend(
@@ -89,33 +87,121 @@ def get_events(
         )
 
 
+class CMP_VALUE(IntEnum):
+    EQUAL = 0
+    SUBSET = -1
+    SUPERSET = 1
+    LESS_THAN_INTERSECTION = -2
+    LTI = -2
+    GREATER_THAN_INTERSECTION = 2
+    GTI = 2
+    LESS_THAN = -3
+    LT = -3  # Neither is sub/superset
+    GREATER_THAN = 3
+    GT = 3  # Neither is sub/superset
+
+
+AW_YEAR = 1900
+AW_MONTH = 1
+
+
+class WeekdayMeta(EnumMeta):
+    @property
+    def members(cls) -> dict[datetime, AbstractWeekday]:
+        """A true class-level property wrapping the map."""
+        return cast(dict[datetime, AbstractWeekday], cls._value2member_map_)
+
+
+class AbstractWeekday(datetime, Enum, metaclass=WeekdayMeta):
+    """
+    An abstract weekday Enum using January 1900 as a base.
+    January 1st, 1900 was a Monday.
+    """
+
+    MONDAY = (AW_YEAR, AW_MONTH, 1)
+    TUESDAY = (AW_YEAR, AW_MONTH, 2)
+    WEDNESDAY = (AW_YEAR, AW_MONTH, 3)
+    THURSDAY = (AW_YEAR, AW_MONTH, 4)
+    FRIDAY = (AW_YEAR, AW_MONTH, 5)
+    SATURDAY = (AW_YEAR, AW_MONTH, 6)
+    SUNDAY = (AW_YEAR, AW_MONTH, 7)
+
+    def at_time(self, hour: int, minute: int = 0) -> datetime:
+        """Combines this abstract day with a specific time of day."""
+        return datetime(self.year, self.month, self.day, hour, minute)
+
+    @classmethod
+    def current(cls) -> Self:
+        now = datetime.now()
+        now_idx = datetime(year=AW_YEAR, month=AW_YEAR, day=1 + now.weekday())
+
+    def next(self, start: datetime | None) -> Self:
+        start = start or datetime.now()
+
+
+Value2MemberMap: TypeAlias = dict[datetime, AbstractWeekday]
+
+
+type Timey = time | datetime
+
+
 class Duration(NamedTuple):
     start: time | datetime
     end: time | datetime
 
-    def __contains__(self, other: time | datetime | Self) -> bool:
+    @property
+    def absolute(self) -> bool:
+        match (self.start, self.end):
+            case (datetime(), datetime()):
+                return True
+            case _:
+                return False
+
+    def cmp(self, other: Self) -> CMP_VALUE:
+        if self.absolute != other.absolute:
+            raise Incomaprable(self, other)
+        if self == other:
+            return CMP_VALUE.EQUAL
+        if self.end < other.start:
+            return CMP_VALUE.LT
+
+        if self.start < other.start and other.start < self.end < other.end:
+            return CMP_VALUE.LTI
+
+        if self.start > other.end:
+            return CMP_VALUE.GT
+
+        if other.start < self.start < other.end and self.end > other.end:
+            return CMP_VALUE.GTI
+
+        assert (
+            False
+        ), "This should never happen, all should be caught by the above ifs"
+
+    def __contains__(self, other: object) -> bool:
 
         try:
             other: time | datetime = other.value  # type: ignore[override]
         except AttributeError:
             pass
-        try:
-            # Deal with other as routinetime
-            other_tod = other.time_of_day
-        except AttributeError as exc:
-            # deal with other as either duration, time of day, datetime, or time
-            try:
-                # deal with other as duration or time of day
-                # these should be datetime or time
-                other_start = other.start
-                other_end = other.end
-            except AttributeError:
-                # Deal with other as datetime or time
-                other_start = other_end = other
-
         else:
-            other_start = other_tod.start
-            other_end = other_tod.end
+            try:
+                # Deal with other as routinetime
+                other_tod = other.time_of_day
+            except AttributeError:
+                # deal with other as either duration, time of day, datetime, or time
+                try:
+                    # deal with other as duration or time of day
+                    # these should be datetime or time
+                    other_start: Timey = other.start
+                    other_end: Timey = other.end
+                except AttributeError:
+                    # Deal with other as datetime or time
+                    other_start = other_end = other
+
+            else:
+                other_start = other_tod.start
+                other_end = other_tod.end
 
         try:
             # at this point, other start and other end should either be
@@ -137,24 +223,33 @@ class Duration(NamedTuple):
         )
         return self.start <= other_start and other_end <= self.end
 
-    def __and__(self, other: Self):
+    def __and__(self, other: Self) -> Duration:
+        print(f"self & other: {self} & {other}")
         early, late = sorted([self, other], key=lambda x: x.start)
         if early.end < late.start:
-            raise ValueError(f"NO NO NO {early}, {late} ({self}, {other})")
-            return None
+            raise ValueError(f"NO NO NO {early} & {late} ({self} & {other})")
+            return
 
-        return Duration(max(early.start, late.start), min(early.end, late.end))
+        res = Duration(max(early.start, late.start), min(early.end, late.end))
 
-    def __or__(self, other):
+        print(f"{self} & {other} = {res}")
+        return res
+
+    def __or__(self, other) -> Duration | None:
         early, late = sorted([self, other], key=lambda x: x.start)
+        print(f"self | other: {self} | {other}")
         if early.end < late.start:
+            print(
+                f"early, late: {early}, {late}; self | other: {self}, {other}"
+            )
             # disjoint
-            raise ValueError(f"NO NO NO {early}, {late} ({self}, {other})")
             return None
 
-        return Duration(
-            min(early.start, late.start), max(early.start, late.start)
-        )
+        res = Duration(min(early.start, late.start), max(early.end, late.end))
+
+        print(f"{self} | {other} = {res}")
+
+        return res
 
     def duration(self):
         return timedelta(
@@ -223,6 +318,7 @@ class TIME_OF_DAY(Enum):
     LATE_EVENING = Duration.create(start_hour=19, end_hour=20)
     NIGHT = Duration.create(start_hour=20, end_hour=0)
     EVENING_AND_NIGHT = EVENING | NIGHT
+    ALL_DAY = ((MORNING | AFTERNOON) | EVENING) | NIGHT
 
     @property
     def start(self):
@@ -274,7 +370,7 @@ class TIME_OF_DAY(Enum):
                         self.end,
                         other,
                     )
-                    raise TypeError(f"Not comparable") from exc
+                    raise TypeError("Not comparable") from exc
             else:
                 logger.debug(
                     "TIME_OF_DAY this worked: self.start(%s) <= other(%s) and self.end(%s) <= ",
@@ -422,9 +518,30 @@ class RoutineTime(NamedTuple):
 @dataclass
 class Task(Container):
     title: str
-    description: str = None
-    due: date | datetime = None
-    routine_time: RoutineTime = None
+    description: str | None = None
+    due: date | datetime | None = None
+    routine_time: RoutineTime | None = None
+
+    @property
+    def start_date(self) -> date | None:
+        if self.routine_time is not None:
+            return self.routine_time.start
+
+        # Assumes self.due is set, per __post_init__
+        try:
+            return cast(datetime, self.due).date()
+        except AttributeError:
+            return cast(date, self.due)
+
+    @property
+    def end_date(self) -> date | None:
+        if self.routine_time is not None:
+            return self.routine_time.end
+
+        try:
+            return cast(datetime, self.due).date()
+        except AttributeError:
+            return cast(date, self.due)
 
     def __post_init__(self):
         if self.due is None and self.routine_time is None:
@@ -433,6 +550,21 @@ class Task(Container):
             raise TypeError(
                 "routine time and due may not both be set on a Task"
             )
+
+    def timey_range(self) -> tuple[Timey, Timey]:
+        if self.due is not None:
+            try:
+                self.due.date()
+            except AttributeError:
+                due = datetime.combine(self.due, time.min)
+                return due, due
+            else:
+                # Above confirms that self.due is a datetime (providing client
+                # code uses correct types at all)
+                return self.due, self.due
+
+    def __contains__(self, item: object) -> bool:
+        return timey_cmp(self, item) in [CMP_VALUE.EQUAL, CMP_VALUE.SUPERSET]
 
     @classmethod
     def load(cls, in_dict):
@@ -454,10 +586,45 @@ class Task(Container):
         return loaded
 
 
+type AllTimey = Timey | Task | Duration | Event | RoutineTime | TIME_OF_DAY
+
+
+class NotTimey(BaseException):
+    def __init__(self, not_timey) -> None:
+        super().__init__(f"{not_timey} ({type({not_timey})}) is not Timey")
+
+
+def timey_get_duration(t: AllTimey) -> Duration:
+    match t:
+        case time() | datetime():
+            return Duration(t, t)
+        case Task():
+            return Duration(*t.timey_range())
+        case Duration():
+            return t
+        case TIME_OF_DAY():
+            return Duration(t.start, t.end)
+        case RoutineTime():
+            return Duration(t.time_of_day.start, t.time_of_day.end)
+        case _:
+            raise NotTimey(t)
+
+
+def timey_cmp(a: AllTimey, b: AllTimey) -> CMP_VALUE:
+    """
+    not a traditional cmp, as it also checks superset/subset.
+     see CMP_VALUE for return meanings (-2->2)
+    """
+    # Extract the durations to compare
+    ad: Duration = timey_get_duration(a)
+    bd: Duration = timey_get_duration(b)
+    return ad.cmp(bd)
+
+
 def tasks_by_routine_day_and_time(
     tasks: list[Task], valid_times: list[TIME_OF_DAY] | None = None
-) -> dict[int, set[Task]]:
-    sorted_tasks = {}
+) -> dict[int, dict[TIME_OF_DAY, list[Task]]]:
+    sorted_tasks: dict[int, dict[TIME_OF_DAY, list[Task]]] = {}
     if valid_times is None:
         valid_times = list(TIME_OF_DAY)
 
@@ -472,6 +639,7 @@ def tasks_by_routine_day_and_time(
             and task.routine_time.time_of_day not in valid_times
         ):
             for valid_time in valid_times:
+                # Checking for `time()` in `TIME_OF_DAY`
                 if task.routine_time in valid_time:
                     time_of_day = valid_time
                     break
@@ -479,17 +647,19 @@ def tasks_by_routine_day_and_time(
                 raise ValueError(
                     f"Could not find valid time for {task.routine_time} in {valid_times}"
                 )
-        else:
+        elif task.routine_time.time_of_day is not None:
             time_of_day = task.routine_time.time_of_day
+        else:
+            time_of_day = TIME_OF_DAY.ALL_DAY
 
         task_weekdays: frozenset[int] | None = task.routine_time.weekdays
         if task_weekdays is None:
             task_weekdays = list(range(7))
 
         for weekday in task_weekdays:
-            sorted_tasks.setdefault(weekday, dict()).setdefault(
-                time_of_day, list()
-            ).append(task)
+            sorted_tasks.setdefault(
+                weekday, dict[TIME_OF_DAY, list[Task]]()
+            ).setdefault(time_of_day, list()).append(task)
     return sorted_tasks
 
 
@@ -502,13 +672,13 @@ def get_tasks(
     if remove_routine:
         tasks = [task for task in tasks if not task.routine_time]
     for task in tasks:
-        if (task.start is not None and task.start > date) or (
-            task.end is not None and task.end < date
+        if (task.start_date is not None and task.start_date > date) or (
+            task.end_date is not None and task.end_date < date
         ):
             continue
-        if task.day == date.weekday() and (
-            (time_of_day is None) or (task in time_of_day)
-        ):
+        if date.weekday() in cast(
+            frozenset[int], cast(RoutineTime, task.routine_time).weekdays
+        ) and ((time_of_day is None) or (task in time_of_day)):
             yield task
 
 
@@ -523,3 +693,8 @@ def get_month_tasks(
             tasks, date.replace(day=day), remove_routine=remove_routine
         )
         dow = (dow + 1) % 7
+
+
+class Incomaprable(BaseException):
+    def __init__(self, a, b):
+        return super().__init__(f"cannot compare {a} and {b}")

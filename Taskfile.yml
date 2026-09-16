@@ -2,13 +2,16 @@ version: "3"
 
 includes:
   scribus:
-    taskfile: "task/scribus/Taskfile.yml"
+    taskfile: "task/Scribus.yml"
 
+  lib:
+    taskfile: task/Install.yml
+    flatten: true
 
   py-cache:
     # This is what I would use for another repo:
-    # taskfile: 'https://raw.githubusercontent.com/pretty-weed/toolbelt/refs/heads/main/task/cache_python_deps/Taskfile.yml'
-    taskfile: 'task/cache_python_deps/Taskfile.yml'
+    # taskfile: 'https://raw.githubusercontent.com/pretty-weed/toolbelt/refs/heads/main/task/CachePythonDeps.yml'
+    taskfile: 'task/CachePythonDeps.yml'
     vars:
       WHEEL_CACHE: '{{ .WHEEL_CACHE | default "local" }}'
 
@@ -108,32 +111,6 @@ tasks:
         vars:
           PACKAGES: '{{ .ROOT_DIR }}{{ .ITEM }} {{ .BUILD_DEPS }}'
 
-  install:
-    aliases: ["I"]
-    vars:
-      PACKAGE: '.'
-      ED_VAL: '{{ .EDITABLE | default "true" | trim | lower }}'
-      EDITABLE: '{{ if or  (eq .ED_VAL "t") (eq .ED_VAL "true" ) (eq .ED_VAL "1") }}-e {{ end}}'
-    preconditions:
-      # I would do this with requires:{vars:{name: enum:}} but that doesn't support a ref it seems
-      - cmd: ":" # TODO, fail if package is not a valid EXTRA
-    cmds:
-      # always do an editable install, as that caches the github dep
-      # ToDo: Make editable optional
-      - 'pip install {{ .CACHED_INSTALL_FLAGS }} {{ .EDITABLE }} {{ .PACKAGE }}'
-
-  install-offline:
-    # ToDo: handle github with cached
-    aliases: ["offline-install", "Io"]
-    cmds:
-      - task: install
-        vars: {"OFFLINE": "darnTootin"}
-
-  install-brute:
-    aliases: ["brute-install", "Ib"]
-    cmds:
-      - 'pip wheel {{ .CACHED_INSTALL_FLAGS }} --no-deps {{ .ROOT_DIR}}'
-
   generate-stubs:
     aliases:
       - stubs
@@ -145,17 +122,6 @@ tasks:
       - stubgen --package danditools --package dandiscribe --output {{ .STUB_DIR }} {{ .CLI_ARGS }}
       - black {{ .STUB_DIR }}
 
-  install-shell-scripts:
-    aliases:
-      - install-scripts
-    vars:
-      INSTALL_DIR: '{{ .INSTALL_DIR | default .DEFAULT_BIN_DIR }}'
-    cmds:
-      - echo {{ .DEFAULT_BIN_DIR }}
-      - |
-        for fname in shelltools/*; do
-        test ! -e {{ .INSTALL_DIR }}/$fname && ln -s $(realpath "shelltools/${fname}") "{{.INSTALL_DIR}}/${fname}"
-        done
 
   type-deps:
     internal: true

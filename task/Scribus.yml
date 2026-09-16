@@ -8,8 +8,13 @@ vars:
 ENV:
   LOG_LEVEL: '{{ .LOG_LEVEL | default "DEBUG" }}'
 
+includes:
+  lib:
+    taskfile: ./Install.yml
+    flatten: true
+
 tasks:
-  install:
+  install-usr:
     aliases: ["scribus-install"]
     interactive: true
     vars:
@@ -31,18 +36,8 @@ tasks:
         test -e $fname && echo rm -rf $fname
         done
 
-  create-venv:
-    aliases: ["venv", "virtualenv"]
-    internal: true
-    vars:
-      VENV_CMD: '{{ .VIRTUALENV_CMD | default "virtualenv" }}'
-    status:
-      - test -n "{{ .VIRTUAL_ENV }}"
-      - test -d '{{ .VIRTUAL_ENV }}'
-    cmds:
-      - '{{ .VENV_CMD }} {{ .VIRTUAL_ENV }}'
-
   run-script:
+    aliases: ["run"]
     deps:
       - create-venv
     vars:

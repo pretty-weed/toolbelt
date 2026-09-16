@@ -1,27 +1,33 @@
-from collections.abc import Generator
-from contextlib import contextmanager
-
-from functools import partial
 import logging
-from logging import handlers
+from collections.abc import Callable, Generator
+from contextlib import contextmanager
+from functools import partial
 from os import getenv
 from pathlib import Path
 from types import TracebackType
-from typing import Any, Callable, Generic, NamedTuple, TypeVar, override
+from typing import (
+    Any,
+    Generic,
+    NamedTuple,
+    Self,
+    TypeAlias,
+    TypeVar,
+    override,
+)
 
-from annotated_types import T
-from dandiscribe.enums import Unit
-from dandiscribe.exceptions import NoSuchMasterPage, WrongPageError
-from dandiscribe.scribus_data import ScribusItem
-from dandy_lib.datatypes.twodee import Number, Coord, Rect as Rect2d
+import scribus
+import yaml
+from dandy_lib.datatypes.twodee import Coord, Number, Vector
 from platformdirs import user_cache_dir
 
-from numpy import array, matrix
-import yaml
-
 from dandiscribe.data import Rect, Size
+from dandiscribe.enums import Unit
+from dandiscribe.exceptions import (
+    NoSuchMasterPage,
+    WrongPageError,
+)
 from dandiscribe.log import configure
-import scribus
+from dandiscribe.scribus_data import ScribusItem
 
 LOG_DIR = Path(
     getenv("LOG_DIR", Path.home().joinpath(".local", "var", "log", "python"))
@@ -34,7 +40,75 @@ LOG_FILE = Path(
 
 LOGGER: logging.Logger = configure(__name__)
 
-MISSING = object()
+
+class _MissingType:
+    pass
+
+
+MISSING: _MissingType = _MissingType()
+
+
+# ToDo maybe put this in a library
+type JSONValue = str | int | float | bool | None | list["JSONValue"] | dict[
+    str, "JSONValue"
+]
+type YAMLValue = dict[str, "YAMLValue"] | list[
+    "YAMLValue"
+] | str | int | float | bool | None
+
+
+class CopyTransformation(NamedTuple):
+    translation: Vector
+    scale: Vector
+
+
+TransformHandler: TypeAlias = Callable[
+    [Rect, Rect, list[str]], dict[frozenset[str],]
+]
+
+
+def no_skew(source: Rect, dest: Rect, objects: list[str]) -> list[str]:
+
+    for p_obj in pasted:
+        # getItemPageNumber seems to be zero indexed?
+        if scribus.getItemPageNumber(p_obj) != dest.page - 1:
+            msg = (
+                f"{p_obj} not on correct page number (is "
+                f"{scribus.getItemPageNumber(p_obj)}, expected {dest.page - 1})"
+                f"(on {scribus.currentPageNumber()})"
+            )
+
+            try:
+                raise ValueError(msg)
+            except ValueError:
+                LOGGER.exception(msg)
+        else:
+            LOGGER.info(
+                "%s is on correct page (%i). position: %s",
+                p_obj,
+                scribus.getItemPageNumber(p_obj),
+                scribus.getPosition(p_obj),
+            )
+    # calc translations
+    scale: tuple[float, float] = tuple[float, float](
+        ts / os for ts, os in zip(dest.size, source.size)
+    )
+    # allow up to 5% skew adjust
+    if not min(scale) / max(scale) > 0.95:
+
+        msg = f"Not designed to skew scale yet ({scale} ({max(scale) / min(scale) * 100.0}% skew)) target box: {target_box}, source box: {source_box}"
+        raise ValueError(msg)
+    translate: tuple[Number, ...] = tuple[Number, ...](
+        t - o for t, o in zip(target_box.position, (0, 0))
+    )
+    pgroup = scribus.setNewName(group_name, scribus.groupObjects(pasted))
+    try:
+        scribus.scaleGroup(min(scale), pgroup)
+    except scribus.NoValidObjectError:
+        LOGGER.exception("%s not found when scaling group", pgroup)
+        assert pgroup in scribus.getPageItems()
+    LOGGER.debug("Moving %s by %s, scaling by %d", pgroup, translate, scale[0])
+    scribus.moveObject(translate[0], translate[1], pgroup)
 
 
 class PauseDrawing:
@@ -72,7 +146,7 @@ def _get_env_bool(env_var: str):
 
 
 @contextmanager
-def save_sandwich(save_as: str | None = None) -> Generator[None, None, None]:
+def save_sandwich(save_as: str | None = None) -> Generator[None]:
     if save_as:
         do_save: Callable[[], None] = partial(scribus.saveDocAs, save_as)
     else:
@@ -87,10 +161,23 @@ get_cache_dir = partial(user_cache_dir, "dandiscribe", "DandelionGood")
 CACHE_FILE = Path(get_cache_dir()).joinpath("cache.yml")
 
 
-def get_cache_res() -> str | int | float | list | dict | None:
+class InvalidCache(BaseException):
+    def __init__(self, cache_type: type, cache_val: Any, cache_file: Path):
+        super().__init__(
+            f"Cache in {cache_file} is invalid, {cache_type} should be dict. Value: {cache_val}"
+        )
+
+
+def get_cache_res():
     if not CACHE_FILE.is_file():
         return MISSING
-    return yaml.safe_load(CACHE_FILE.read_text())
+    cache = yaml.safe_load(CACHE_FILE.read_text())
+
+    match cache:
+        case dict():
+            return cache
+        case _:
+            raise InvalidCache(type(cache), cache, CACHE_FILE)
 
 
 def get_cache_val(key: str, cache_res=None):
@@ -153,6 +240,50 @@ class DebuggerNotEnabled(NotInDebugger):
     pass
 
 
+class Debug:
+
+    _debuggers: dict[str, Self] = {}
+
+    def __new__(cls, name: str, enabled: bool = False) -> Self:
+        if name in cls._debuggers:
+            return cls._debuggers[name]
+        return super().__new__(cls)
+
+    def __init__(self, name, enabled: bool = False) -> None:
+        self.name = name
+        self.enabled = enabled
+        self.level = 0
+
+        super().__init__()
+
+    def enable(self, enabled: bool = True) -> None:
+        self.enabled = enabled
+
+    def disable(self) -> None:
+        self.enabled = False
+
+    def __enter__(self) -> Self:
+
+        return self
+
+    def __exit__(
+        self: Self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> bool | None:
+
+        return False
+
+    def set_break(self) -> bool:
+        if not self.enabled or self.level <= 0:
+            return False
+        import pdb  # noqa: T100
+
+        pdb.set_trace()  # noqa: T100
+        return True
+
+
 Tmp = TypeVar("Tmp")
 
 
@@ -195,7 +326,7 @@ class TempGoToBase(Generic[Tmp]):
             self._go_back()
 
 
-class TempGoto(TempGoToBase[int]):
+class TempGoTo(TempGoToBase[int]):
 
     @override
     def _goto_page(self, go_back: bool = False) -> None:
@@ -305,7 +436,8 @@ def copy_items(
     dest: CopyDest,
     source_box: Rect | None = None,
     target_box: Rect | None = None,
-    debug_boxes: bool = False,
+    rotation: float | None = None,
+    transform_hander: TransformHandler = no_skew,
 ) -> str:
     LOGGER.info(f"Copying from {source} to {dest}")
 
@@ -397,29 +529,28 @@ def copy_items(
 
             msg = f"Not designed to skew scale yet ({scale} ({max(scale) / min(scale) * 100.0}% skew)) target box: {target_box}, source box: {source_box}"
             raise ValueError(msg)
-        translate: tuple[Number, ...] = tuple[Number, ...](
+        translation: tuple[Number, ...] = tuple[Number, ...](
             t - o for t, o in zip(target_box.position, (0, 0))
         )
-        LOGGER.debug(
-            "before rename, page items: %s",
-            ", ".join(str(item) for item in scribus.getPageItems()),
-        )
         pgroup = scribus.setNewName(group_name, scribus.groupObjects(pasted))
-        LOGGER.debug(
-            "after group and rename, pgroup is %s, group name is %s\npage items: %s",
-            group_name,
-            pgroup,
-            ", ".join(str(item) for item in scribus.getPageItems()),
-        )
         try:
             scribus.scaleGroup(min(scale), pgroup)
         except scribus.NoValidObjectError:
             LOGGER.exception("%s not found when scaling group", pgroup)
             assert pgroup in scribus.getPageItems()
         LOGGER.debug(
-            "Moving %s by %s, scaling by %d", pgroup, translate, scale[0]
+            "Moving %s by %s, scaling by %d", pgroup, translation, min(scale)
         )
-        scribus.moveObject(translate[0], translate[1], pgroup)
+        scribus.moveObject(translation[0], translation[1], pgroup)
+        if rotation:
+            scribus.rotateObject(rotation, pgroup)
+            try:
+                scribus.moveObject(*scribus.getSize(pgroup), pgroup)
+            except TypeError:
+                LOGGER.exception(
+                    f"Typerror: {pgroup} ({type(pgroup)} [{pgroup!r}])"
+                )
+                raise
         return pgroup
 
 

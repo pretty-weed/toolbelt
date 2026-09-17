@@ -1,20 +1,5 @@
 version: "3"
 
-includes:
-  scribus:
-    taskfile: "task/Scribus.yml"
-
-  lib:
-    taskfile: task/Install.yml
-    flatten: true
-
-  py-cache:
-    # This is what I would use for another repo:
-    # taskfile: 'https://raw.githubusercontent.com/pretty-weed/toolbelt/refs/heads/main/task/CachePythonDeps.yml'
-    taskfile: 'task/CachePythonDeps.yml'
-    vars:
-      WHEEL_CACHE: '{{ .WHEEL_CACHE | default "local" }}'
-
 vars:
   CURRENT_OS_REPO:
     sh: lsb_release --id --short || echo "ubuntu"
@@ -24,8 +9,7 @@ vars:
     sh: python3 -c "import tomllib, pathlib;print(','.join(tomllib.loads(pathlib.Path('pyproject.toml').read_text()).get('project', {}).get('optional-dependencies', {}).keys()))"
   EXTRAS:
     ref: splitList "," .ALL_EXTRAS
-  CACHED_INSTALL_FLAGS: '--find-links=file:{{ .CACHE_DIR }} {{ if .OFFLINE }}--no-index{{ end }}'
-  OFFLINE: '{{ .OFFLINE | default "" }}'
+    OFFLINE: '{{ .OFFLINE | default "" }}'
   DOCKER_TAG_REPO: '{{ .CONTAINER_TAG | default "dd-toolbelt" }}'
   CONTAINER_WORKING_COPY_DIR: /tmp/working_copy
 
@@ -35,10 +19,31 @@ vars:
       for test_path in $(echo $PATH | tr ":" "\n"); do
       [[ "${test_path}" == $HOME/*bin ]] && bin_path="${test_path}" || :
       done
-      test -n "${bin_path}" && echo "${bin_path}"F
+      test -n "${bin_path}" && echo "${bin_path}"
 
   TOOLBELT_TASK_REF: '{{ .TOOLBELT_TASK_REF | default "main"}}'
   TOOLBELT_TASK_PATH: '{{ .TOOLBELT_TASK_PATH | default "task"}}'
+  SCRIPT_DIR: '{{ .TASKFILE_DIR }}/scripts'  # Overrides included var from install
+includes:
+  scribus:
+    taskfile: "task/Scribus.yml"
+    vars:
+      SCRIPT_DIR: '{ .TASKFILE_DIR }}/scripts'
+
+  lib:
+    taskfile: "task/Install.yml"
+    flatten: true
+    vars:
+      SCRIPT_DIR: '{ .TASKFILE_DIR }}/scripts'
+
+  py-cache:
+    # This is what I would use for another repo:
+    # taskfile: 'https://raw.githubusercontent.com/pretty-weed/toolbelt/refs/heads/main/task/CachePythonDeps.yml'
+    taskfile: 'task/CachePythonDeps.yml'
+    vars:
+      WHEEL_CACHE: '{{ .WHEEL_CACHE | default "local" }}'
+      SCRIPT_DIR: '{{ .SCRIPT_DIR }}'
+
 
 tasks:
   cache-deps-example:
@@ -46,28 +51,6 @@ tasks:
     help: example of how to do this.
     includes:
       this-but-remote: https://raw.githubusercontent.com/pretty-weed/toolbelt/{{ .TOOLBELT_TASK_REF }}{{ .TOOLBELT_TASK_PATH}}/Taskfile.yml
-
-
-  scribus-install:
-    interactive: true
-    cmds:
-      - for: ["LOCAL", "USER", "GLOBAL", ".my-cool-cache"]
-        task: py-cache:default
-        vars:
-          CACHE_DIR: '{{ .ITEM }}'
-        cmd: 'echo {{ .py_cache.CACHE_DIR}} or {{ .CACHE_DIR}}'
-      - echo {{ .ALL_EXTRAS }}
-      - echo {{ .EXTRAS }}
-
-  clean-scribus-pycache:
-    vars:
-      INSTALL_BASE:
-        sh: "pip show -f danditools | grep '^Location' | sed 's;Location: ;;'"
-
-    cmds:
-      - task: scribus:clean-pycache
-        vars:
-          INSTALL_BASE: '{{ .INSTALL_BASE }}'
 
 
   build-test-container:

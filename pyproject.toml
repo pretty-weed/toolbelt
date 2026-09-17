@@ -17,16 +17,9 @@ dependencies = [
     "platformdirs~=4.3.6",
     "pypdf~=6.1",
     "texsoup~=0.3",
-    "dandy_lib@git+http://github.com/pretty-weed/py_libs@v0.12.3",
+    "dandy_lib@git+http://github.com/pretty-weed/py_libs@v1.1.1",
 ]
 
-[tool.setuptools.dynamic]
-readme = {file = ["README.md"], content-type = "text/markdown"}
-
-[tool.setuptools.package-data]
-dandiscribe = ["routines.yml", "fonts/OFL.txt", "fonts/*/*.ttf", "fonts/*/*.otf", "source_files/*.sla"]
-
-danditools = ["type_stubs/py.typed"]
 
 [project.optional-dependencies]
 test = ["tox~=4.28"]
@@ -36,7 +29,8 @@ tooling = [
     "types-PyYAML~=6.0",
     "pytest-mypy~=1.0",
     "types-icalendar",
-    "mypy~=1.18"
+    "mypy~=1.18",
+    "debugpy"
 ]
 pytest = [
     "pytest-cov~=7.0",
@@ -55,6 +49,37 @@ type = [
 clean = [
     "coverage~=7.12"
 ]
+
+[project.scripts]
+scraper = "danditools.scraper:main"
+xrandr-parse = "danditools.xrandr_parse:main"
+blog-combine = "danditools.blog_combine:main"
+cleanup-transcript = "danditools.cleanup_transcript:main"
+cat-html = "danditools.cat_html:main"
+pdf-split = "danditools.pdf:split"
+pdf-demo = "danditools.pdf:demo"
+tex-wc = "danditex.word_count:main"
+
+
+[tool.setuptools.dynamic]
+readme = {file = ["README.md"], content-type = "text/markdown"}
+
+[tool.setuptools.package-data]
+dandiscribe = ["routines.yml", "fonts/OFL.txt", "fonts/*/*.ttf", "fonts/*/*.otf", "source_files/*.sla"]
+
+danditools = ["type_stubs/py.typed"]
+
+[tool.mypy]
+python_version = "3.14"
+
+[tool.pyright]
+pythonVersion = "3.14"
+enableTypeIgnoreComments = true
+analyzeUnannotatedFunctions = true
+reportMissingImports = "error"
+reportMissingTypeStubs = "warning"
+reportPrivateUsage = "warning"
+reportUnknownMemberType = true
 
 
 [tool.tox]
@@ -100,24 +125,6 @@ MYPATH = "type_stubs"
 description = "Run linting on code base"
 extras = ["lint"]
 commands = [["black", "src"], ["black", "tests"]]
-
-[tool.pyright]
-enableTypeIgnoreComments = true
-analyzeUnannotatedFunctions = true
-reportMissingImports = "error"
-reportMissingTypeStubs = "warning"
-reportPrivateUsage = "warning"
-reportUnknownMemberType = true
-
-[project.scripts]
-scraper = "danditools.scraper:main"
-xrandr-parse = "danditools.xrandr_parse:main"
-blog-combine = "danditools.blog_combine:main"
-cleanup-transcript = "danditools.cleanup_transcript:main"
-cat-html = "danditools.cat_html:main"
-pdf-split = "danditools.pdf:split"
-pdf-demo = "danditools.pdf:demo"
-tex-wc = "danditex.word_count:main"
 
 [tool.setuptools_scm]
 

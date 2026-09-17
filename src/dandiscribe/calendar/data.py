@@ -69,7 +69,8 @@ def get_events(
     calendar_name: str | None = None,
 ) -> Iterator[CalEvent]:
 
-    events: list[CalEvent] = []
+    if collated:
+        events: list[CalEvent] = []
     for calendar in get_calendars(calendar_name).values():
         if collated:
             events.extend(
@@ -414,11 +415,11 @@ class TIME_OF_DAY(Enum):
 
 
 class RoutineTime(NamedTuple):
-    weekdays: frozenset[int]
-    time_of_day: TIME_OF_DAY | time
+    weekdays: frozenset[int] | None
+    time_of_day: TIME_OF_DAY | time | None
     weeks: frozenset[int] | None = None
-    start: datetime.date | None = None
-    end: datetime.date | None = None
+    start: date | None = None
+    end: date | None = None
 
     @classmethod
     def load(cls, in_dict):
@@ -441,7 +442,7 @@ class RoutineTime(NamedTuple):
 
         for param in ["start", "end"]:
             if param in in_dict:
-                in_dict[param] = datetime.date.fromisoformat(in_dict[param])
+                in_dict[param] = date.fromisoformat(in_dict[param])
 
         return cls(
             **(
@@ -647,38 +648,36 @@ def tasks_by_routine_day_and_time(
                 raise ValueError(
                     f"Could not find valid time for {task.routine_time} in {valid_times}"
                 )
-        elif task.routine_time.time_of_day is not None:
-            time_of_day = task.routine_time.time_of_day
         else:
-            time_of_day = TIME_OF_DAY.ALL_DAY
+            time_of_day = task.routine_time.time_of_day
 
         task_weekdays: frozenset[int] | None = task.routine_time.weekdays
         if task_weekdays is None:
-            task_weekdays = list(range(7))
+            task_weekdays = frozenset(range(7))
 
         for weekday in task_weekdays:
-            sorted_tasks.setdefault(
-                weekday, dict[TIME_OF_DAY, list[Task]]()
-            ).setdefault(time_of_day, list()).append(task)
+            sorted_tasks.setdefault(weekday, dict()).setdefault(
+                time_of_day, list()
+            ).append(task)
     return sorted_tasks
 
 
 def get_tasks(
     tasks: list[Task],
     date: date,
-    time_of_day: Optional[TIME_OF_DAY] = None,
+    time_of_day: TIME_OF_DAY | None = None,
     remove_routine: bool = False,
 ) -> Iterator[Task]:
     if remove_routine:
         tasks = [task for task in tasks if not task.routine_time]
     for task in tasks:
-        if (task.start_date is not None and task.start_date > date) or (
-            task.end_date is not None and task.end_date < date
+        if (task.start is not None and task.start > date) or (
+            task.end is not None and task.end < date
         ):
             continue
-        if date.weekday() in cast(
-            frozenset[int], cast(RoutineTime, task.routine_time).weekdays
-        ) and ((time_of_day is None) or (task in time_of_day)):
+        if task.day == date.weekday() and (
+            (time_of_day is None) or (task in time_of_day)
+        ):
             yield task
 
 

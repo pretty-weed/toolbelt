@@ -7,25 +7,24 @@ from dandiscribe.exceptions import (
     NewDocError as NewDocError,
 )
 from dandiscribe.log import configure as configure
-from dandy_lib.datatypes.tuples import MixableNamedTuple
 from dandy_lib.datatypes.twodee import Size
-from dataclasses import asdict as asdict, dataclass, field
+from dataclasses import dataclass, field
 from functools import lru_cache
-from os import linesep as linesep
-from typing import ClassVar, NamedTuple, Self, TypeVar
+from typing import NamedTuple, Self, TypeVar, override
 
 LOGGER: logging.Logger
 PAPER_LETTER: Size
 PAPER_A4: Size
 PAPER_A5: Size
 
-class Page(MixableNamedTuple):
-    page_number: int
-    size: Size
-    master_page: str | None
-    is_master: bool
-    def as_page(self) -> Page: ...
-    def as_master_page(self) -> Page: ...
+@dataclass
+class Page:
+    page_number: int = ...
+    size: Size = ...
+    master_page: str | None = ...
+    is_master: bool = ...
+    def as_page(self) -> Self: ...
+    def get_master_page(self) -> MasterPage: ...
     def get_margins_and_usable_size(self) -> tuple[Margins, Size]: ...
     def __enter__(self) -> None: ...
     def __exit__(
@@ -37,17 +36,22 @@ class Page(MixableNamedTuple):
     def make(self) -> None: ...
     def draw(self, bake_master: bool = False) -> None: ...
 
-class MasterPage(MixableNamedTuple, Page):
-    page_number: ClassVar[None]
-    is_master: ClassVar[bool]
+@dataclass
+class MasterPage(Page):
+    is_master: bool = field(default=True, init=False)
     @property
     def name(self) -> str: ...
+    @override
     def draw(self) -> None: ...
 
-class SpreadPage(MixableNamedTuple, Page):
-    inside_margin: int
-    outside_margin: int
-    side: PAGESIDE
+@dataclass
+class SpreadPageMixin:
+    inside_margin: float = ...
+    outside_margin: float = ...
+    side: PAGESIDE = ...
+
+@dataclass
+class SpreadPage(Page, SpreadPageMixin): ...
 
 class Sheet(NamedTuple):
     front: Page
@@ -72,6 +76,6 @@ class Document:
         page_size: Size,
         create_masters: bool = True,
         masters_begin: int = 2,
-    ) -> Doc: ...
+    ) -> Self: ...
     def make(self) -> None: ...
     def draw(self, *draw_args, **draw_kwargs) -> None: ...

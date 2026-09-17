@@ -1,7 +1,6 @@
 import logging
 from _typeshed import Incomplete
-from annotated_types import T as T
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from dandiscribe.data import Rect as Rect, Size as Size
 from dandiscribe.enums import Unit as Unit
@@ -11,15 +10,34 @@ from dandiscribe.exceptions import (
 )
 from dandiscribe.log import configure as configure
 from dandiscribe.scribus_data import ScribusItem as ScribusItem
-from logging import handlers as handlers
-from numpy import array as array, matrix as matrix
+from dandy_lib.datatypes.twodee import Vector as Vector
+from pathlib import Path
 from types import TracebackType
-from typing import Generic, NamedTuple, TypeVar
+from typing import Any, Generic, NamedTuple, Self, TypeAlias, TypeVar
 
 LOG_DIR: Incomplete
 LOG_FILE: Incomplete
 LOGGER: logging.Logger
-MISSING: Incomplete
+
+class _MissingType: ...
+
+MISSING: _MissingType
+type JSONValue = str | int | float | bool | None | list["JSONValue"] | dict[
+    str, "JSONValue"
+]
+type YAMLValue = dict[str, "YAMLValue"] | list[
+    "YAMLValue"
+] | str | int | float | bool | None
+
+class CopyTransformation(NamedTuple):
+    translation: Vector
+    scale: Vector
+
+TransformHandler: TypeAlias = Callable[
+    [Rect, Rect, list[str]], dict[frozenset[str]]
+]
+
+def no_skew(source: Rect, dest: Rect, objects: list[str]) -> list[str]: ...
 
 class PauseDrawing:
     @classmethod
@@ -33,14 +51,17 @@ class PauseDrawing:
     ): ...
 
 @contextmanager
-def save_sandwich(
-    save_as: str | None = None,
-) -> Generator[None, None, None]: ...
+def save_sandwich(save_as: str | None = None) -> Generator[None]: ...
 
 get_cache_dir: Incomplete
 CACHE_FILE: Incomplete
 
-def get_cache_res() -> str | int | float | list | dict | None: ...
+class InvalidCache(BaseException):
+    def __init__(
+        self, cache_type: type, cache_val: Any, cache_file: Path
+    ) -> None: ...
+
+def get_cache_res(): ...
 def get_cache_val(key: str, cache_res=None): ...
 def cache_val(key: str, value, overwrite: bool = False): ...
 def clear_cache_val(key: str): ...
@@ -48,6 +69,23 @@ def get_justify_adjustments(count: int, remainder: int) -> list[int]: ...
 
 class NotInDebugger(Exception): ...
 class DebuggerNotEnabled(NotInDebugger): ...
+
+class Debug:
+    def __new__(cls, name: str, enabled: bool = False) -> Self: ...
+    name: Incomplete
+    enabled: Incomplete
+    level: int
+    def __init__(self, name, enabled: bool = False) -> None: ...
+    def enable(self, enabled: bool = True) -> None: ...
+    def disable(self) -> None: ...
+    def __enter__(self) -> Self: ...
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> bool | None: ...
+    def set_break(self) -> bool: ...
 
 Tmp = TypeVar("Tmp")
 
@@ -60,7 +98,7 @@ class TempGoToBase(Generic[Tmp]):
         self, type: type[Exception], value: Exception, traceback: TracebackType
     ): ...
 
-class TempGoto(TempGoToBase[int]): ...
+class TempGoTo(TempGoToBase[int]): ...
 class TempGoToMaster(TempGoToBase[str]): ...
 
 class EditMaster:
@@ -94,7 +132,8 @@ def copy_items(
     dest: CopyDest,
     source_box: Rect | None = None,
     target_box: Rect | None = None,
-    debug_boxes: bool = False,
+    rotation: float | int | None = None,
+    transform_hander: TransformHandler = ...,
 ) -> str: ...
 
 ok_to_ignore_dialog: Incomplete

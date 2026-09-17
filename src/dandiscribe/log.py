@@ -26,7 +26,9 @@ LOG_LEVEL: int = logging.getLevelNamesMapping()[
 LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-def configure(name: str = None, level: int = LOG_LEVEL) -> logging.Logger:
+def configure(
+    name: str | None = None, level: int = LOG_LEVEL
+) -> logging.Logger:
     logger: logging.Logger
     if name is None:
         logger = LOGGER

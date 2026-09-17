@@ -1,11 +1,19 @@
 import scribus
 from _typeshed import Incomplete
-from collections.abc import Sequence
+from collections.abc import Callable as Callable, Sequence
 from dandiscribe.data import Margins as Margins, Rect as Rect, Size as Size
-from dandiscribe.enums import PAGESIDE as PAGESIDE, Unit as Unit
+from dandiscribe.enums import (
+    InsertPaddingPages as InsertPaddingPages,
+    Orientation as Orientation,
+    PAGESIDE as PAGESIDE,
+    PaperSize as PaperSize,
+    Unit as Unit,
+)
 from dandiscribe.exceptions import (
     NewDocError as NewDocError,
     NoObjects as NoObjects,
+    PageOutOfRange as PageOutOfRange,
+    ScriptRunError as ScriptRunError,
 )
 from dandiscribe.layout import (
     Document as Document,
@@ -20,7 +28,7 @@ from dandiscribe.util import (
 from dandy_lib.annotations import DivisibleBy as DivisibleBy
 from dandy_lib.cli.enums import ChoiceEnumMeta, ChoiceEnumMixin
 from dandy_lib.datatypes.tuples import MixableNamedTuple
-from enum import Enum, IntEnum as IntEnum
+from enum import Enum
 from functools import lru_cache, partial
 from pathlib import Path
 from typing import Annotated, NamedTuple
@@ -35,33 +43,52 @@ class LayoutVal:
     val: int
     rows: int
     cols: int
-    orientation: int
+    orientation: Orientation
+    page_rotations: Incomplete
     def __init__(
-        self, val: int, rows: int, cols: int, orientation: int = ...
+        self,
+        val: int,
+        rows: int,
+        cols: int,
+        orientation: Orientation = ...,
+        page_rotations: dict[int, int | float] | None = None,
     ) -> None: ...
     def __int__(self) -> int: ...
     def get_enum_tuple(self) -> tuple[int, int, int, int]: ...
 
 class Layout(ChoiceEnumMixin, LayoutVal, Enum, metaclass=ChoiceEnumMeta):
-    EIGHT_PAGE_MINI = (8, 2, 4)
-    QUARTER = (4, 2, 2)
+    EIGHT_PAGE_MINI = ...
+    QUARTER = ...
+    QUARTER_PORTRAIT = ...
+    QUARTER_LANDSCAPE = ...
     HALF = (2, 1, 2)
-    def __mul__(self, other) -> int: ...
-    def __add__(self, other) -> int: ...
-    def __floordiv__(self, other) -> int: ...
-    def __rfloordiv__(self, other) -> int: ...
+    def __mul__(self, other: float) -> int | float: ...
+    def __add__(self, other: float) -> int | float: ...
+    def __floordiv__(self, other: float) -> int | float: ...
+    def __rfloordiv__(self, other: float) -> int | float: ...
+    def __rtruediv__(self, other: float) -> int | float: ...
 
 class PrintPage(MixableNamedTuple, Page):
     layout: Layout
     is_master: bool
     master_page: Incomplete
-    source_pages: tuple["FinalSheetSpread", ...]
+    spreads: tuple[FinalSheetSpread, ...]
+    rotations: tuple[tuple[int, int | float]] | None
+    def max(self) -> int | float: ...
+    def get_source_pages(self) -> list[int]: ...
 
 class SourcePage(Page): ...
 
 class FinalSheetSpread(NamedTuple):
-    left: int
-    right: int
+    left: int | None
+    right: int | None
+    left_rotation: int | float | None = ...
+    right_rotation: int | float | None = ...
+    def max(self) -> int | float: ...
+    def __bool__(self) -> bool: ...
+    def sorted(
+        self, reverse: bool = False, skip_missing: bool = False
+    ) -> list[int | float]: ...
     def translate(
         self,
         source: str,
@@ -126,18 +153,22 @@ class FinalDoc(NamedTuple):
         path: str | Path | None = None,
     ) -> bool: ...
     @property
-    @lru_cache
     def signature_pages(self) -> list[tuple[int, ...]]: ...
-    @property
-    @lru_cache
-    def print_pages(self) -> list[PrintPage]: ...
+    def get_print_pages(
+        self,
+        insert_padding_pages: InsertPaddingPages = ...,
+        insert_doc_pages: bool = False,
+        source_pg_count: int | None = None,
+    ) -> list[PrintPage]: ...
     def assemble(
         self,
         source: str | Path | None = None,
         close_source: bool = True,
         close_final: bool = True,
         inside_margins: bool = False,
-    ): ...
+        insert_padding_pages: InsertPaddingPages = ...,
+        insert_doc_pages: bool = False,
+    ) -> None: ...
 
 HALF_DOC: partial[FinalDoc]
 QUARTER_DOC: partial[FinalDoc]

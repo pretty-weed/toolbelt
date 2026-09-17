@@ -18,6 +18,7 @@ from dandiscribe.data import Margins, Rect, Size
 from dandiscribe.enums import (
     PAGESIDE,
     InsertPaddingPages,
+    Orientation,
     PaperSize,
     Unit,
 )
@@ -60,12 +61,14 @@ class LayoutVal:
         val: int,
         rows: int,
         cols: int,
-        orientation: int = scribus.LANDSCAPE,
+        orientation: Orientation = Orientation.LANDSCAPE,
+        page_rotations: dict[int, int | float] | None = None,
     ) -> None:
         self.val: int = val
         self.rows: int = rows
         self.cols: int = cols
-        self.orientation: int = orientation
+        self.orientation: Orientation = orientation
+        self.page_rotations = page_rotations
         super().__init__()
 
     def __int__(self) -> int:
@@ -76,8 +79,17 @@ class LayoutVal:
 
 
 class Layout(ChoiceEnumMixin, LayoutVal, Enum, metaclass=ChoiceEnumMeta):
-    EIGHT_PAGE_MINI = (8, 2, 4)
-    QUARTER = (4, 2, 2)
+    EIGHT_PAGE_MINI = (
+        8,
+        2,
+        4,
+        Orientation.LANDSCAPE,
+        dict[int, int | float]([(1, 180), (6, 180), (7, 180), (8, 180)]),
+    )
+    QUARTER = (4, 2, 2, Orientation.PORTRAIT)
+
+    QUARTER_PORTRAIT = (4, 2, 2, Orientation.PORTRAIT)
+    QUARTER_LANDSCAPE = (4, 2, 2, Orientation.LANDSCAPE)
     HALF = (2, 1, 2)
 
     def __mul__(self: Self, other: float) -> int | float:
@@ -117,8 +129,30 @@ class SourcePage(Page):
 
 
 class FinalSheetSpread(NamedTuple):
-    left: int
-    right: int
+    left: int | None
+    right: int | None
+    left_rotation: int | float | None = None
+    right_rotation: int | float | None = None
+
+    def max(self) -> int | float:
+
+        try:
+            return max(v for v in self if v is not None)
+        except ValueError:
+            return float("-inf")
+
+    def __bool__(self) -> bool:
+        return any(p is not None for p in self)
+
+    def sorted(
+        self, reverse: bool = False, skip_missing: bool = False
+    ) -> list[int | float]:
+        if skip_missing:
+            return sorted([v for v in self if v is not None])
+        return sorted(
+            [v if v is not None else float("-inf") for v in self],
+            reverse=reverse,
+        )
 
     def translate(
         self,
@@ -155,39 +189,38 @@ class FinalSheetSpread(NamedTuple):
             Coord(rect.position.x + rect.width / 2, rect.position.y),
             Size(rect.width / 2, rect.height, rect.unit).as_points(),
         )
-        LOGGER.debug(
-            "created left and right rects from center rect\nleft: %s\nright:%s\norig:%s",
-            left_rect,
-            right_rect,
-            rect,
-        )
-        try:
-            left_group = copy_items(
-                CopySrc(source, self.left),
-                CopyDest(
-                    dest_doc if dest_doc is not None else source,
-                    dest_page.page_number,
-                ),
-                source_box=source_rect,
-                target_box=left_rect,
-                debug_boxes=debug_rects,
+        LOGGER.debug("left rect: %s", left_rect)
+        LOGGER.debug("right rect: %s", right_rect)
+        completed: dict[int, str] = dict[int, str]()
+        dest_doc = dest_doc if dest_doc is not None else source
+        for source_page in self.sorted(skip_missing=True):
+            src = CopySrc(source, source_page)
+            dest = CopyDest(dest_doc, dest_page.page_number)
+            dest_box = left_rect if source_page == self.left else right_rect
+
+            rotation = (
+                self.left_rotation
+                if source_page == self.left
+                else self.right_rotation
             )
-        except NoObjects:
-            left_group = None
-        try:
-            right_group = copy_items(
-                CopySrc(source, self.right),
-                CopyDest(
-                    dest_doc if dest_doc is not None else source,
-                    dest_page.page_number,
-                ),
-                source_box=source_rect,
-                target_box=right_rect,
-                debug_boxes=debug_rects,
-            )
-        except NoObjects:
-            right_group = None
-        return (left_group, right_group)
+            try:
+                this_group = copy_items(
+                    src,
+                    dest,
+                    source_box=source_rect,
+                    target_box=dest_box,
+                    rotation=rotation,
+                )
+            except NoObjects:
+                # Skip this page, the other might work if this is the first
+                continue
+            except PageOutOfRange:
+                # we sorted pages, so if we hit this, no sense continuing
+                break
+            else:
+                completed[source_page] = this_group
+
+        return (completed.get(self.left), completed.get(self.right))
 
     def _translate_page(
         self,
@@ -366,7 +399,6 @@ class FinalDoc(NamedTuple):
         return True
 
     @property
-    @lru_cache
     def signature_pages(self) -> list[tuple[int, ...]]:
         return get_signature_pages(self.pages, self.signature_sheets)
 
@@ -465,13 +497,41 @@ class FinalDoc(NamedTuple):
                     )
                     if not front_pages:
                         assert not back_pages
-                        warn("breaking in cols")
+                        LOGGER.debug(
+                            "breaking in cols at row: %d col: %d", row, col
+                        )
                         break
+                    if self.layout.page_rotations is not None:
+                        fl_rot: int | float | None = (
+                            self.layout.page_rotations.get(front_pages[-1])
+                        )
+                        fr_rot: int | float | None = (
+                            self.layout.page_rotations.get(back_pages[0])
+                        )
+                        bl_rot: int | float | None = (
+                            self.layout.page_rotations.get(back_pages[1])
+                        )
+                        br_rot: int | float | None = (
+                            self.layout.page_rotations.get(front_pages[-2])
+                        )
+                    else:
+                        fl_rot = fr_rot = bl_rot = br_rot = None
+
                     front_spreads.append(
-                        FinalSheetSpread(front_pages.pop(-1), back_pages.pop(0))
+                        FinalSheetSpread(
+                            front_pages.pop(-1),
+                            back_pages.pop(0),
+                            left_rotation=fl_rot,
+                            right_rotation=fr_rot,
+                        )
                     )
                     back_spreads.append(
-                        FinalSheetSpread(back_pages.pop(0), front_pages.pop(-1))
+                        FinalSheetSpread(
+                            back_pages.pop(0),
+                            front_pages.pop(-1),
+                            left_rotation=bl_rot,
+                            right_rotation=br_rot,
+                        )
                     )
                 else:
                     continue
@@ -511,20 +571,43 @@ class FinalDoc(NamedTuple):
         close_source: bool = True,
         close_final: bool = True,
         inside_margins: bool = False,
-    ):
+        insert_padding_pages: InsertPaddingPages = InsertPaddingPages.NO,
+        insert_doc_pages: bool = False,
+    ) -> None:
+
+        current_doc: str
         resize_pages = False
         if source is None:
             scribus.saveDoc()
-            source = scribus.getDocName()
+            source: Path = Path(scribus.getDocName())
             resize_pages = True
         else:
-            scribus.openDoc(str(source))
-
+            try:
+                scribus.openDoc(str(source))
+            except Exception as exc:
+                print(exc)
+                print(Path(source))
+                print(list(Path(source).parent.glob("*")))
+                raise exc
+        make_pages = self.pages
         source_pages: int = scribus.pageCount()
-
+        if source_pages % int(self.layout) and not insert_padding_pages:
+            raise ValueError(
+                f"Source document pages ({source_pages}) does not divide evenly into Layout (//{self.layout})"
+            )
+        if (
+            source_pages // int(self.layout) != self.pages
+            and not insert_padding_pages
+        ):
+            raise ValueError(
+                f"Final doc format ([source pgs]{source_pages}//[layout pgs]{int(self.layout)}) does not fit number of pages in doc ({self.pages})"
+            )
         # Ensure new_name is a path object
         new_name = Path(self.name)
-        assert new_name != Path(scribus.getDocName())
+        if new_name == Path(scribus.getDocName()):
+            raise ValueError(
+                "FinalDoc.assemble() not made to target source document"
+            )
 
         # ToDo ensure uniform page size
         source_size_pt: Size = Size.factory(
@@ -558,7 +641,11 @@ class FinalDoc(NamedTuple):
             raise exc
 
         scribus.setDocType(scribus.NOFACINGPAGES, scribus.FIRSTPAGELEFT)
-        scribus.saveDocAs(str(new_name))
+        try:
+            scribus.saveDocAs(str(new_name))
+        except Exception as exc:
+            LOGGER.exception("Failed to save %s", new_name)
+            raise exc
         # update
         page_dims: dict[int, tuple[float, float]] = dict[
             int, tuple[float, float]
@@ -566,15 +653,22 @@ class FinalDoc(NamedTuple):
             (page_no, scribus.getPageNSize(page_no))
             for page_no in range(1, scribus.pageCount() + 1)
         )
-
-        for print_page in self.print_pages:
+        print_pages: list[PrintPage] = self.get_print_pages(
+            insert_padding_pages, insert_doc_pages, source_pages
+        )
+        max_source: int | float = max(pp.max() for pp in print_pages)
+        LOGGER.debug("max_source is %d", max_source)
+        for print_page in print_pages:
 
             try:
                 scribus.gotoPage(print_page.page_number)
-            except IndexError:
-                raise IndexError(
-                    f"Page {print_page.page_number} out of range, total pages: {scribus.pageCount()}"
-                )
+            except IndexError as exc:
+                # ToDo figure out where to put this with front cover/etc
+                # just assuming will not put on front cover, so either cover or
+                # inside of it, in case there are important things there
+
+                raise PageOutOfRange(print_page.page_number, self.name) from exc
+
             if resize_pages:
                 LOGGER.warning("resizing pages in existing doc")
                 scribus.setCurrentPageSize(
@@ -598,17 +692,21 @@ class FinalDoc(NamedTuple):
             )
             spread_width: float = float(pts_size.width / (self.cols // 2))
             row_height: float = float(pts_size.height / self.rows)
+            for spread in print_page.spreads:
 
-            for spread in print_page.source_pages:
-                _ = spread.translate(
-                    str(source),
-                    print_page,
-                    Rect(
-                        Coord(x, y), Size(spread_width, row_height, Unit.POINTS)
-                    ),
-                    self.name,
-                    debug_rects=True,
-                )
+                try:
+                    left_grp, right_grp = spread.translate(
+                        str(source),
+                        print_page,
+                        Rect(
+                            Coord(x, y),
+                            Size(spread_width, row_height, Unit.POINTS),
+                        ),
+                        self.name,
+                    )
+                except PageOutOfRange as exc:
+                    if not insert_padding_pages:
+                        raise exc
                 # Setup for next spread
                 if col == self.spread_cols - 1:
                     row += 1
@@ -619,15 +717,21 @@ class FinalDoc(NamedTuple):
                     col += 1
                     x += spread_width
 
+        scribus.saveDoc()
         if close_final:
-            assert scribus.getDocName() == self.name
+            current_doc = scribus.getDocName()
+
+            LOGGER.info("closing final doc: %s", current_doc)
+            if current_doc != self.name:
+                raise ScriptRunError(
+                    f"Expected final doc to be open before closing, got {current_doc}"
+                )
             scribus.closeDoc()
 
         if close_source:
             if not close_final:
                 LOGGER.debug("closing source, but not final")
                 doc_count: int = scribus.haveDoc()
-                # TODO handle possibly other open docs gracefully
                 if not doc_count >= 2:
                     raise ScriptRunError(
                         f"Expected two docs open (source and final), got {doc_count}",
@@ -649,7 +753,6 @@ class FinalDoc(NamedTuple):
                     actual=current_doc,
                 )
             scribus.closeDoc()
-            assert scribus.getDocName() == self.name
 
 
 HALF_DOC: partial[FinalDoc] = partial[FinalDoc](FinalDoc, layout=Layout.HALF)

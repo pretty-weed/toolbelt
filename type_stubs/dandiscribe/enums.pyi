@@ -3,7 +3,6 @@ from dandiscribe.log import configure as configure
 from dandy_lib.cli.enums import ChoiceEnumMeta, ChoiceEnumMixin
 from dandy_lib.datatypes.twodee import Number as Number
 from enum import Enum, IntEnum, StrEnum
-from multiprocessing import Value as Value
 from typing import ClassVar, Self, override
 
 LOGGER: logging.Logger
@@ -74,6 +73,17 @@ class LinespacingMode(IntEnum):
     FIXED = 0
     AUTOMATIC = 1
     BASELINE_GRID = 2
+
+class InsertPaddingPages(ChoiceEnumMixin, IntEnum, metaclass=ChoiceEnumMeta):
+    NO = 0
+    BEGINNING = 1
+    END = 2
+    @override
+    def __bool__(self) -> bool: ...
+
+class Orientation(IntEnum):
+    LANDSCAPE = ...
+    PORTRAIT = ...
 
 class UnitType:
     __instances__: ClassVar[dict[str, Self]]

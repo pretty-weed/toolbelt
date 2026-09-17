@@ -1,7 +1,7 @@
 import logging
 from dataclasses import asdict, dataclass, field, fields
 from functools import lru_cache
-from typing import ClassVar, NamedTuple, Self, TypeVar
+from typing import NamedTuple, Self, TypeVar, override
 
 import scribus
 from dandy_lib.datatypes.twodee import Size
@@ -28,9 +28,10 @@ class Page:
     def as_page(self) -> Self:
         return self.__class__(**(asdict(self) | {"is_master": False}))
 
-    def as_master_page(self) -> MasterPage:
-        print(dir(self))
-        page_fields = [f.name for f in fields(Page)]
+    def get_master_page(self) -> MasterPage:
+        print("in get_master_page")
+        print(self)
+        page_fields = [f.name for f in fields(MasterPage) if f.init]
         return MasterPage(
             **({k: v for k, v in asdict(self).items() if k in page_fields})
         )
@@ -92,16 +93,19 @@ class Page:
             scribus.applyMasterPage(master_page, self.page_number)
 
 
+@dataclass
 class MasterPage(Page):
-    is_master: ClassVar[bool] = (
-        True  # pyright: ignore[reportIncompatibleVariableOverride]
-    )
+
+    is_master: bool = field(
+        default=True, init=False
+    )  # pyright: ignore[reportIncompatibleVariableOverride]
 
     @property
     def name(self) -> str:
         return str(self.master_page)
 
-    def draw(self) -> None:  # type: ignore[override]
+    @override
+    def draw(self) -> None:  # type: ignore[override]  # pyright: ignore[reportIncompatibleMethodOverride]
         return Page.draw(self)
 
 
@@ -260,7 +264,7 @@ class Document:
                     f"making master page {page.master_page} for page {page}"
                 )
                 # scribus.progressSet((done + 1) // total)
-                as_mpage: Page = page.as_master_page()
+                as_mpage: Page = page.get_master_page()
                 self.masterpages[page.master_page] = as_mpage
                 as_mpage.make()
                 as_mpage.draw(master=True, *draw_kwargs, **master_kwargs)

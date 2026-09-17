@@ -436,13 +436,12 @@ def copy_items(
     dest: CopyDest,
     source_box: Rect | None = None,
     target_box: Rect | None = None,
-    rotation: float | None = None,
+    rotation: float | int | None = None,
     transform_hander: TransformHandler = no_skew,
 ) -> str:
     LOGGER.info(f"Copying from {source} to {dest}")
 
     # Set up some vars
-    tempPage = f"temp-{source.page}->{dest.page}"
     group_name: str = f"page {source.page}"
     ibounds_name: str = f"bounds {source.page}"
 
@@ -450,9 +449,7 @@ def copy_items(
     try:
         scribus.gotoPage(source.page)
     except IndexError as exc:
-        raise IndexError(
-            f"Failed going to page {source.page} in doc {scribus.getDocName()}"
-        ) from exc
+        raise PageOutOfRange(source.page, scribus.getDocName()) from exc
     if source_box is None:
         LOGGER.debug("No source box passed to copy_items, creating it")
         # ToDo: maybe (optionally)? consider margins
@@ -472,6 +469,7 @@ def copy_items(
     pg_items: list[str] = [pi[0] for pi in scribus.getPageItems()]
     scribus.copyObjects(pg_items)
     scribus.openDoc(dest.filename)
+    # Might want to remove this I need to check \/
     scribus.createMasterPage(tempPage)
     if target_box is None:
         LOGGER.debug("No target box passed to copy_items, creating it")
@@ -486,72 +484,65 @@ def copy_items(
             target_box,
             scribus.getDocName(),
         )
-    if debug_boxes:
-        LOGGER.debug("creating debug rect %s", target_box)
-        _ = scribus.createRect(
-            target_box.x,
-            target_box.y,
-            target_box.width,
-            target_box.height,
-            f"debug-{source.page}->{dest.page}",
-        )
+    vis_debug.vis_debug(
+        target_box.create,
+        log_kwargs={"name": f"debug-{source.page}->{dest.page}"},
+    )
     LOGGER.debug(
         "source dims: %s, target dims: %s", source_box.size, target_box.size
     )
-    with EditMaster(tempPage):
-        pasted = scribus.pasteObjects()
-        for p_obj in pasted:
-            # getItemPageNumber seems to be zero indexed?
-            if scribus.getItemPageNumber(p_obj) != dest.page - 1:
-                msg = (
-                    f"{p_obj} not on correct page number (is "
-                    f"{scribus.getItemPageNumber(p_obj)}, expected {dest.page - 1})"
-                    f"(on {scribus.currentPageNumber()})"
-                )
 
-                try:
-                    raise ValueError(msg)
-                except ValueError:
-                    LOGGER.exception(msg)
-            else:
-                LOGGER.info(
-                    "%s is on correct page (%i). position: %s",
-                    p_obj,
-                    scribus.getItemPageNumber(p_obj),
-                    scribus.getPosition(p_obj),
-                )
-        # calc translations
-        scale: tuple[float, float] = tuple[float, float](
-            ts / os for ts, os in zip(target_box.size, source_box.size)
-        )
-        # allow up to 5% skew adjust
-        if not min(scale) / max(scale) > 0.95:
+    pasted = scribus.pasteObjects()
+    for p_obj in pasted:
+        # getItemPageNumber seems to be zero indexed?
+        if scribus.getItemPageNumber(p_obj) != dest.page - 1:
+            msg = (
+                f"{p_obj} not on correct page number (is "
+                f"{scribus.getItemPageNumber(p_obj)}, expected {dest.page - 1})"
+                f"(on {scribus.currentPageNumber()})"
+            )
 
-            msg = f"Not designed to skew scale yet ({scale} ({max(scale) / min(scale) * 100.0}% skew)) target box: {target_box}, source box: {source_box}"
             raise ValueError(msg)
-        translation: tuple[Number, ...] = tuple[Number, ...](
-            t - o for t, o in zip(target_box.position, (0, 0))
-        )
-        pgroup = scribus.setNewName(group_name, scribus.groupObjects(pasted))
+        else:
+            LOGGER.info(
+                "%s is on correct page (%i). position: %s",
+                p_obj,
+                scribus.getItemPageNumber(p_obj),
+                scribus.getPosition(p_obj),
+            )
+    # calc translations
+    scale: tuple[float, float] = tuple[float, float](
+        ts / os for ts, os in zip(target_box.size, source_box.size)
+    )
+    LOGGER.info("scaling %s by %d", ", ".join(pasted), min(scale))
+    # allow up to 5% skew adjust
+    if not min(scale) / max(scale) > 0.95:
+
+        msg = f"Not designed to skew scale yet ({scale} ({max(scale) / min(scale) * 100.0}% skew)) target box: {target_box}, source box: {source_box}"
+        raise ValueError(msg)
+    translation: tuple[Number, ...] = tuple[Number, ...](
+        t - o for t, o in zip(target_box.position, (0, 0))
+    )
+    pgroup = scribus.setNewName(group_name, scribus.groupObjects(pasted))
+    try:
+        scribus.scaleGroup(min(scale), pgroup)
+    except scribus.NoValidObjectError:
+        LOGGER.exception("%s not found when scaling group", pgroup)
+        assert pgroup in scribus.getPageItems()
+    LOGGER.debug(
+        "Moving %s by %s, scaling by %d", pgroup, translation, min(scale)
+    )
+    scribus.moveObject(translation[0], translation[1], pgroup)
+    if rotation:
+        scribus.rotateObject(rotation, pgroup)
         try:
-            scribus.scaleGroup(min(scale), pgroup)
-        except scribus.NoValidObjectError:
-            LOGGER.exception("%s not found when scaling group", pgroup)
-            assert pgroup in scribus.getPageItems()
-        LOGGER.debug(
-            "Moving %s by %s, scaling by %d", pgroup, translation, min(scale)
-        )
-        scribus.moveObject(translation[0], translation[1], pgroup)
-        if rotation:
-            scribus.rotateObject(rotation, pgroup)
-            try:
-                scribus.moveObject(*scribus.getSize(pgroup), pgroup)
-            except TypeError:
-                LOGGER.exception(
-                    f"Typerror: {pgroup} ({type(pgroup)} [{pgroup!r}])"
-                )
-                raise
-        return pgroup
+            scribus.moveObject(*scribus.getSize(pgroup), pgroup)
+        except TypeError as exc:
+            LOGGER.exception(
+                f"Typerror: {pgroup} ({type(pgroup)} [{repr(pgroup)}])"
+            )
+            raise
+    return pgroup
 
 
 ok_to_ignore_dialog = _OkToIgnoreDialog()

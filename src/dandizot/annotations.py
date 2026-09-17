@@ -1,5 +1,5 @@
 """
-dandy_lib.zotero.annotations
+dandy_lib.dandizot.annotations
 """
 
 import sys

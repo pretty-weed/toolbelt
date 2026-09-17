@@ -1,19 +1,17 @@
-import datetime
-from enum import auto, unique, Enum, IntEnum, StrEnum
 import logging
-from multiprocessing import Value
-from typing import ClassVar, Self, Tuple, override
+from enum import Enum, IntEnum, StrEnum, auto, unique
+from typing import ClassVar, Self, override
 
-from dandy_lib.datatypes.twodee import Number
-from dandy_lib.cli.enums import ChoiceEnumMeta, ChoiceEnumMixin
 import scribus
+from dandy_lib.cli.enums import ChoiceEnumMeta, ChoiceEnumMixin
+from dandy_lib.datatypes.twodee import Number
 
 from dandiscribe.log import configure
-
 
 LOGGER: logging.Logger = configure(__name__)
 
 
+# @runtime_checkable
 class PaperSize(
     ChoiceEnumMixin, tuple[float, float], Enum, metaclass=ChoiceEnumMeta
 ):
@@ -88,17 +86,37 @@ class FontFaces(StrEnum):
 
 
 class LinespacingMode(IntEnum):
+    """
+    These are not provided as consts in scribus, but are described in function
+    help
+    """
+
     FIXED = 0
     AUTOMATIC = 1
     BASELINE_GRID = 2
 
 
+class InsertPaddingPages(ChoiceEnumMixin, IntEnum, metaclass=ChoiceEnumMeta):
+    NO = 0
+    BEGINNING = 1
+    END = 2
+
+    @override
+    def __bool__(self) -> bool:
+        return bool(self.value)
+
+
+class Orientation(IntEnum):
+    LANDSCAPE = scribus.LANDSCAPE
+    PORTRAIT = scribus.PORTRAIT
+
+
 class UnitType:
     __slots__: ClassVar[tuple[str, ...]] = (
-        "unit",
         "aliases",
-        "pt_multiplier",
         "const_enum",
+        "pt_multiplier",
+        "unit",
     )
     __instances__: ClassVar[dict[str, Self]] = {}
 
@@ -121,6 +139,7 @@ class UnitType:
             return instance
         return super().__new__(cls)
 
+    @override
     def __str__(self):
         return f"<Unit {self.unit} [{self.const_enum}] = points * {self.pt_multiplier}>"
 
@@ -178,7 +197,7 @@ class Unit(ChoiceEnumMixin, UnitType, Enum, metaclass=ChoiceEnumMeta):
         for unit in cls:
             if unit.const_enum == current_unit:
                 return unit
-        raise EnvironmentError(f"Could not determine Unit from {current_unit}")
+        raise OSError(f"Could not determine Unit from {current_unit}")
 
     @classmethod
     def get(cls, key: str | int) -> Self:
@@ -208,10 +227,10 @@ class Unit(ChoiceEnumMixin, UnitType, Enum, metaclass=ChoiceEnumMeta):
             or value in self.aliases
         )
 
-    def __matmul__(self, other: "Unit | UnitType") -> float:
+    def __matmul__(self, other: Unit | UnitType) -> float:
         return other.pt_multiplier / self.pt_multiplier
 
-    def __rmatmul__(self, other: "Unit | UnitType") -> float:
+    def __rmatmul__(self, other: Unit | UnitType) -> float:
         return self.__matmul__(other, log=False)
 
     def __mul__(self, other: Number) -> float:

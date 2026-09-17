@@ -29,11 +29,11 @@ class CalendarPage(Page):
 
     def draw(
         self,
-        master=None,
+        bake_master=False,
         tasks: Collection[Task] | None = None,
         events: Collection[Event] | None = None,
     ):
-        return super().draw(master)
+        return super().draw(bake_master)
 
     def get_delta_date(
         self, days: int = 0, weeks: int = 0
@@ -58,12 +58,12 @@ class NotesSpread(SpreadPage, CalendarPage):
 
     def draw(
         self,
-        master=None,
+        bake_master: bool = False,
         tasks: list[Task] | None = None,
         events: dict[datetime.datetime, Event] | None = None,
     ):
 
-        super().draw(master=master)
+        super().draw(master=self.master_page)
         with self:
             margins, usable_size = self.get_margins_and_usable_size()
             usable_width, usable_height = usable_size

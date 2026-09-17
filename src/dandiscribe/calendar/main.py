@@ -27,11 +27,12 @@ from dandiscribe.calendar.pages import (
     A5MonthSpreadPage,
     A5NotesPage,
     A5WeekSpreadPage,
+    CalendarPage,
     gen_notes_spread_pages,
 )
 from dandiscribe.enums import PAGESIDE
 from dandiscribe.exceptions import NewDocError
-from dandiscribe.layout import Page
+from dandiscribe.layout import MasterPage
 from dandiscribe.util import (
     MISSING,
     Debug,
@@ -55,7 +56,7 @@ logger = getLogger(__name__)
 logger.setLevel(DEBUG)
 
 
-def _delta_fom_match(orig: date, match: Match) -> timedelta:
+def _delta_from_match(orig: date, match: Match) -> timedelta:
     n, unit = match.groups()
     n = int(n)
     unit = unit.lower()
@@ -98,13 +99,13 @@ def prompt_to_date(prompt_str, start_date: datetime) -> datetime | date:
     match = TIME_DELTA_RE.match(prompt_str)
 
     if match:
-        return start_date + _delta_fom_match(page_date, match)
+        return start_date + _delta_from_match(start_date, match)
     return date.fromisoformat(prompt_str.replace("/", "-").replace(".", "-"))
 
 
 @dataclass
 class Document:
-    pages: list[Page] = field(default_factory=list)
+    pages: list[CalendarPage] = field(default_factory=list)
     masterpages: dict[str, MasterPage] = field(default_factory=dict)
 
     def make(self):
@@ -135,9 +136,9 @@ class Document:
                 and page.master_page not in self.masterpages
             ):
                 scribus.progressSet((done + 1) // total)
-                master_page = page.as_master_page()
+                master_page = page.get_master_page()
                 self.masterpages[page.master_page] = master_page
-                master_page.draw(tasks=tasks)
+                master_page.draw()
                 done += 1
 
                 assert all([pg.is_master for pg in self.masterpages.values()])

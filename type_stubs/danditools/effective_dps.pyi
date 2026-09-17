@@ -1,0 +1,9 @@
+from typing import NamedTuple
+
+class MultArg(NamedTuple):
+    m: int
+    pct: float
+    def __mul__(self, other): ...
+    def __rmul__(self, other): ...
+
+def main() -> None: ...

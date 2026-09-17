@@ -7,18 +7,19 @@ vars:
   HERE_SCRIPT_DIR: '{{ .TASKFILE_DIR }}/../scripts'
   SCRIPT_DIR_IN: '{{ .SCRIPT_DIR }}'
   FINAL_SCRIPT_DIR: >-
-    {{ if .PARENT_TASKFILE_DIR }}
-    {{ .PARENT_TASKFILE_DIR }}/scripts
-    {{ else }}
-    {{ .TASKFILE_DIR }}/../scripts
-    {{ end }}
-
+    {{- if eq .ROOT_DIR .TASKFILE_DIR -}}
+    {{.TASKFILE_DIR}}/../scripts
+    {{- else -}}
+    {{.ROOT_DIR}}/scripts
+    {{- end -}}
+  PTD:
+    sh: 'echo "PTD: {{ .PARENT_TASKFILE_DIR }}"'
   SD_RES:
-    sh: 'echo "{{.SCRIPT_DIR }}{{ .FINAL_SCRIPT_DIR }}, {{ .HERE_SCRIPT_DIR }}"'
+    sh: 'echo "{{.SCRIPT_DIR }}\n{{ .FINAL_SCRIPT_DIR }}\n{{ .HERE_SCRIPT_DIR }}"'
   SCRIBUS_PACKAGE_PATH:
     sh: >-
       {{ .SCRIBUS_EXE}} -g -ns
-      -py {{ .SCRIPT_DIR }}/find_scribus_py_loc.py
+      -py {{ .FINAL_SCRIPT_DIR }}/find_scribus_py_loc.py
       -q --outfile {{ .SCRIBUS_PYPATH_TMP_FILE }};
       cat {{ .SCRIBUS_PYPATH_TMP_FILE}}
   PATH: >-

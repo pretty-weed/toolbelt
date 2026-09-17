@@ -1,4 +1,5 @@
 import importlib
+
 import dandiscribe
 
 importlib.reload(dandiscribe)
@@ -12,7 +13,7 @@ import dandiscribe.calendar
 
 importlib.reload(dandiscribe.calendar)
 
-dandiscribe.calendar.main(
+dandiscribe.calendar.main.entry_point(
     routines_file="/home/dandelion/src/toolbelt/src/dandiscribe/routines.yml",
     debug=False,
 )

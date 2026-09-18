@@ -3,7 +3,8 @@
 import calendar
 from collections.abc import Container, Iterator
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta
+from datetime import date as Date
+from datetime import datetime, time, timedelta
 from enum import Enum, EnumMeta, IntEnum
 from functools import cache
 from logging import INFO, getLogger
@@ -53,7 +54,7 @@ def get_calendars(
 
 
 def _date_and_dt_key(
-    in_val: date | datetime,
+    in_val: Date | datetime,
 ) -> datetime:
     try:
         return datetime.combine(in_val.date(), in_val.time())  # type: ignore[union-attr]
@@ -63,8 +64,8 @@ def _date_and_dt_key(
 
 
 def get_events(
-    start: date,
-    end: date,
+    start: Date,
+    end: Date,
     collated: bool = True,
     calendar_name: str | None = None,
 ) -> Iterator[CalEvent]:
@@ -184,25 +185,31 @@ class Duration(NamedTuple):
         try:
             other: time | datetime = other.value  # type: ignore[override]
         except AttributeError:
-            pass
-        else:
-            try:
-                # Deal with other as routinetime
-                other_tod = other.time_of_day
-            except AttributeError:
-                # deal with other as either duration, time of day, datetime, or time
-                try:
-                    # deal with other as duration or time of day
-                    # these should be datetime or time
-                    other_start: Timey = other.start
-                    other_end: Timey = other.end
-                except AttributeError:
-                    # Deal with other as datetime or time
-                    other_start = other_end = other
+            print(
+                f"No attribute value on other: {other} ({other!r}), keeping value"
+            )
 
-            else:
-                other_start = other_tod.start
-                other_end = other_tod.end
+        print(f"other is {other}")
+
+        try:
+            # Deal with other as routinetime
+            other_tod = other.time_of_day
+        except AttributeError:
+            print(f"except AttributeError for other.time_of day {other}")
+            # deal with other as either duration, time of day, datetime, or time
+            try:
+                # deal with other as duration or time of day
+                # these should be datetime or time
+                other_start: Timey = other.start
+                other_end: Timey = other.end
+            except AttributeError:
+                # Deal with other as datetime or time
+                other_start = other_end = other
+
+        else:
+            print("else for other.value")
+            other_start = other_tod.start
+            other_end = other_tod.end
 
         try:
             # at this point, other start and other end should either be
@@ -298,6 +305,41 @@ class Event:
                 start=event.event.start,
                 end=event.event.end,
             )
+
+
+def get_events_by_date(
+    events: list[Event], start: datetime, end: datetime
+) -> dict[Date, list[Event]]:
+    event_by_date: dict[Date, list[Event]] = {}
+    for event in Event.get_from_calendars(
+        start=start,
+        end=end,
+    ):
+
+        logger.info("handling event: %s", event)
+
+        try:
+            end_date, start_date = event.end.date(), event.start.date()
+        except AttributeError:
+            start_date, end_date = event.start, event.end
+            start_time, end_time = time.min, time.max
+        else:
+            start_time, end_time = event.start.time(), event.end.time()
+
+        if event.start == event.end:
+            event_by_date.setdefault(start_date, []).append(event)
+            continue
+
+        try:
+            extra_page = 1 if start_time >= end_time else 0
+        except AttributeError:
+            extra_page = 0
+        for day_n in range((end_date - start_date).days + extra_page):
+            event_by_date.setdefault(
+                start_date + timedelta(days=day_n), []
+            ).append(event)
+        continue
+    return event_by_date
 
 
 class TIME_OF_DAY(Enum):
@@ -418,8 +460,8 @@ class RoutineTime(NamedTuple):
     weekdays: frozenset[int] | None
     time_of_day: TIME_OF_DAY | time | None
     weeks: frozenset[int] | None = None
-    start: date | None = None
-    end: date | None = None
+    start: Date | None = None
+    end: Date | None = None
 
     @classmethod
     def load(cls, in_dict):
@@ -442,7 +484,7 @@ class RoutineTime(NamedTuple):
 
         for param in ["start", "end"]:
             if param in in_dict:
-                in_dict[param] = date.fromisoformat(in_dict[param])
+                in_dict[param] = Date.fromisoformat(in_dict[param])
 
         return cls(
             **(
@@ -457,7 +499,7 @@ class RoutineTime(NamedTuple):
 
     def match(
         self,
-        day: date | datetime | int,
+        day: Date | datetime | int,
         time: time | datetime | int,
         week: Optional[int] = None,
         duration: Optional[timedelta | int] = None,
@@ -475,19 +517,18 @@ class RoutineTime(NamedTuple):
         ):
             return False
 
-        # if date is a datetime
+        # if day  is a datetime
         try:
-            date = date.date()
+            day = day.date()
         except AttributeError:
             # either int (day of week) or day
-            pass
 
-        try:
-            day = date.weekday
-        except AttributeError:
-            # assume is int
-            if not 0 <= day <= 6:
-                raise ValueError("Day must be 0-6 for day of week")
+            try:
+                day = day.weekday
+            except AttributeError:
+                # assume is int
+                if not 0 <= cast(int, day) <= 6:
+                    raise ValueError("Day must be 0-6 for day of week")
 
         # if time is a datetime
         if time is not None:
@@ -520,11 +561,11 @@ class RoutineTime(NamedTuple):
 class Task(Container):
     title: str
     description: str | None = None
-    due: date | datetime | None = None
+    due: Date | datetime | None = None
     routine_time: RoutineTime | None = None
 
     @property
-    def start_date(self) -> date | None:
+    def start_date(self) -> Date | None:
         if self.routine_time is not None:
             return self.routine_time.start
 
@@ -532,17 +573,17 @@ class Task(Container):
         try:
             return cast(datetime, self.due).date()
         except AttributeError:
-            return cast(date, self.due)
+            return cast(Date, self.due)
 
     @property
-    def end_date(self) -> date | None:
+    def end_date(self) -> Date | None:
         if self.routine_time is not None:
             return self.routine_time.end
 
         try:
             return cast(datetime, self.due).date()
         except AttributeError:
-            return cast(date, self.due)
+            return cast(Date, self.due)
 
     def __post_init__(self):
         if self.due is None and self.routine_time is None:
@@ -576,7 +617,7 @@ class Task(Container):
         )
         if "due" in in_dict:
             try:
-                in_dict["due"] = date.fromisoformat(in_dict["due"])
+                in_dict["due"] = Date.fromisoformat(in_dict["due"])
             except ValueError:
                 in_dict["due"] = datetime.fromisoformat(in_dict["due"])
         if "routine_time" in in_dict:
@@ -664,19 +705,22 @@ def tasks_by_routine_day_and_time(
 
 def get_tasks(
     tasks: list[Task],
-    date: date,
+    date: Date,
     time_of_day: TIME_OF_DAY | None = None,
     remove_routine: bool = False,
 ) -> Iterator[Task]:
     if remove_routine:
         tasks = [task for task in tasks if not task.routine_time]
     for task in tasks:
-        if (task.start is not None and task.start > date) or (
-            task.end is not None and task.end < date
+        if (task.start_date is not None and task.start_date > date) or (
+            task.end_date is not None and task.end_date < date
         ):
             continue
-        if task.day == date.weekday() and (
-            (time_of_day is None) or (task in time_of_day)
+        if all(
+            task.routine_time is not None,
+            task.routine_time.weekdays is not None,
+            date.weekday() in cast(frozenset[int], task.routine_time.weekdays)
+            and ((time_of_day is None) or (task in time_of_day)),
         ):
             yield task
 

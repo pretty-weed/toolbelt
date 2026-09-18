@@ -1,11 +1,9 @@
 import cProfile
-import time
 from dataclasses import dataclass, field
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, timedelta
 from logging import DEBUG, INFO, basicConfig, getLogger
 from pathlib import Path
 from re import Match, compile
-from typing import Any
 
 import scribus
 import yaml
@@ -22,6 +20,7 @@ basicConfig(
 
 
 from dandiscribe import colors
+from dandiscribe.calendar.data import get_events_by_date
 from dandiscribe.calendar.pages import (
     A5FrontPage,
     A5MonthSpreadPage,
@@ -125,6 +124,7 @@ class Document:
     def draw(
         self, tasks: list[Task] | None = None, events: list[Event] | None = None
     ):
+        events_by_date = get_events_by_date(events)
         # make master pages
         scribus.progressReset()
         mp_count = len(set(page.master_page for page in self.pages))
@@ -138,7 +138,7 @@ class Document:
                 scribus.progressSet((done + 1) // total)
                 master_page = page.get_master_page()
                 self.masterpages[page.master_page] = master_page
-                master_page.draw()
+                master_page.make()
                 done += 1
 
                 assert all([pg.is_master for pg in self.masterpages.values()])
@@ -147,9 +147,7 @@ class Document:
         # make pages
         for page in self.pages:
             scribus.progressSet((done + 1) // total)
-            page.draw(
-                master=False, tasks=tasks, events=events.get(page.page_date)
-            )
+            page.draw(tasks=tasks, events=events.get(page.page_date))
             done += 1
 
 
@@ -201,35 +199,7 @@ def make_doc(routines_file=ROUTINES_FILE) -> Document:
     if dates_prompt and dates_prompt != cached_prompt:
         cache_val("dates_prompt", dates_prompt, overwrite=True)
     logger.info("doing dates %s - %s", first_page_date, end)
-    event_by_date: dict[Any, Any] = {}
-    for event in Event.get_from_calendars(
-        datetime.combine(first_page_date, time.min),
-        datetime.combine(end, time.max),
-    ):
 
-        logger.info("handling event: %s", event)
-
-        try:
-            end_date, start_date = event.end.date(), event.start.date()
-        except AttributeError:
-            start_date, end_date = event.start, event.end
-            start_time, end_time = time.min, time.max
-        else:
-            start_time, end_time = event.start.time(), event.end.time()
-
-        if event.start == event.end:
-            event_by_date.setdefault(start_date, []).append(event)
-            continue
-
-        try:
-            extra_page = 1 if start_time >= end_time else 0
-        except AttributeError:
-            extra_page = 0
-        for day_n in range((end_date - start_date).days + extra_page):
-            event_by_date.setdefault(
-                start_date + timedelta(days=day_n), []
-            ).append(event)
-        continue
     logger.info("starting pages")
 
     pages = [
@@ -298,7 +268,8 @@ def make_doc(routines_file=ROUTINES_FILE) -> Document:
     doc.make()
     colors.register_colors()
     with PauseDrawing():
-        doc.draw(tasks, event_by_date)
+        # todo events
+        doc.draw(tasks, events=[])
         # Checkbox.clean()
 
 

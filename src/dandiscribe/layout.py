@@ -80,17 +80,15 @@ class Page:
 
     def draw(self, bake_master: bool = False) -> None:
 
-        if self.master_page and not self.is_master:
-            raise ValueError(f"making page {self}")
         if self.is_master:
             return
         if bake_master:
             raise NotImplementedError()
-        elif not self.is_master:
-            raise ValueError(
-                f"applying {self.master_page} to {self.page_number}"
+        elif not self.is_master and self.master_page:
+            LOGGER.warning(
+                "applying %s to %d", self.master_page, self.page_number
             )
-            scribus.applyMasterPage(master_page, self.page_number)
+            scribus.applyMasterPage(self.master_page, self.page_number)
 
 
 @dataclass

@@ -63,14 +63,13 @@ class NotesSpread(SpreadPage, CalendarPage):
         events: dict[datetime.datetime, Event] | None = None,
     ):
 
-        super().draw(master=self.master_page)
+        super().draw(bake_master=bake_master)
         with self:
             margins, usable_size = self.get_margins_and_usable_size()
             usable_width, usable_height = usable_size
-            draw_master: bool = master is None or bool(master)
 
             # just do the damn thing for now
-            if draw_master:
+            if self.is_master:
                 title = scribus.createText(
                     margins.left, margins.top, usable_width, 19
                 )
@@ -84,7 +83,7 @@ class NotesSpread(SpreadPage, CalendarPage):
                     margins.top + 20,
                     int(usable_width),
                     int(usable_height) - 21,
-                    draw_master,
+                    draw_master=self.is_master,
                 )
 
 
@@ -106,7 +105,7 @@ class MonthSpreadPage(CalendarPage, SpreadPage):
 
     def draw(
         self,
-        master=None,
+        bake_master: bool = False,
         tasks: list[Task] | None = None,
         events: dict[datetime.datetime, Event] | None = None,
     ):
@@ -120,10 +119,9 @@ class MonthSpreadPage(CalendarPage, SpreadPage):
         ]
         if events is None:
             events = {}
-        super().draw(master=master)
-        margins, usable_size = self._get_margins_and_usable_size()
+        super().draw(bake_master=bake_master)
+        margins, usable_size = self.get_margins_and_usable_size()
         usable_width, usable_height = usable_size
-        draw_master = master is None or bool(master)
         first_date = self.page_date - datetime.timedelta(
             days=self.page_date.weekday() + 1
         )
@@ -185,7 +183,7 @@ class MonthSpreadPage(CalendarPage, SpreadPage):
                 )
                 for day, day_name in col_week_days
             }
-            if not draw_master:
+            if not self.is_master:
                 month_name = scribus.createText(
                     margins.left + 20, margins.top + 20, usable_width - 40, 35
                 )
@@ -216,7 +214,7 @@ class MonthSpreadPage(CalendarPage, SpreadPage):
                     margins.top + 55,
                     col_width,
                     usable_height - 55,
-                    master=master,
+                    master=self.is_master,
                 )
                 x += col_width
 
@@ -285,16 +283,15 @@ class WeekSpreadPage(CalendarPage, SpreadPage):
 
     def draw(
         self,
-        master: str | None = None,
+        bake_master: bool = False,
         tasks: list[Task] | None = None,
         events: list[Event] | None = None,
     ):
-        super().draw(master=master)
+        super().draw(bake_master=bake_master)
         if events is None:
             events = []
-        draw_master = master is None or bool(master)
 
-        margins, usable_size = self._get_margins_and_usable_size()
+        margins, usable_size = self.get_margins_and_usable_size()
         usable_width, usable_height = usable_size
         tasks_by_day_and_time: dict[int, dict[TIME_OF_DAY, list[Task]]] = {}
         if tasks is not None:
@@ -322,7 +319,7 @@ class WeekSpreadPage(CalendarPage, SpreadPage):
                     margins.top + 40,
                     col_width,
                     gutter_height,
-                    master=master,
+                    master=self.is_master,
                 )
 
                 # =============================================================
@@ -337,7 +334,7 @@ class WeekSpreadPage(CalendarPage, SpreadPage):
                 while week_of_date.weekday():
                     week_of_date -= datetime.timedelta(days=1)
                 eow_date = week_of_date + datetime.timedelta(6)
-                if not draw_master:
+                if not self.is_master:
                     weekof_text = scribus.createText(
                         margins.left, margins.top + 3, col_width + 3, 40
                     )
@@ -443,7 +440,7 @@ class WeekSpreadPage(CalendarPage, SpreadPage):
                     margins.top + 20,
                     col_width,
                     col_height - 1,
-                    master=master,
+                    master=self.is_master,
                 )
                 x += col_width
                 col_date += datetime.timedelta(days=1)

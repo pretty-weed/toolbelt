@@ -1,17 +1,15 @@
 from dataclasses import dataclass, field
 from typing import Annotated, ClassVar, TypeAlias
+
 import scribus
-
 from annotated_types import Ge, Le
-
 from dandy_lib.datatypes.numeric import NonNegInt
 
 import dandiscribe.colors
-import dandiscribe.enums as enums
-from dandiscribe.util import ok_to_ignore_dialog
+from dandiscribe import enums
 
 ZeroToOneHundredInt: TypeAlias = Annotated[int, Ge(0), Le(100)]
-FullIntensity: ZeroToOneHundredInt = int(100)
+FullIntensity: ZeroToOneHundredInt = 100
 
 
 @dataclass(frozen=True)
@@ -77,6 +75,7 @@ class TextStyle:
 
     def setup(self):
         if not self.name in scribus.getCharStyles():
+
             style_kwargs = {}
             if self.font is not None:
                 try:

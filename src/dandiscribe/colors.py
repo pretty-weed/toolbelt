@@ -1,11 +1,12 @@
 import scribus
-from dandiscribe.enums import COLORS
 
+from dandiscribe.enums import COLORS
 
 COLOR_VALUES = {
     COLORS.LIGHT_BLUE: (64, 18, 0, 2),
     COLORS.PINK: (0, 31, 25, 4),
     COLORS.WHITE: (0, 0, 0, 0),
+    COLORS.RICH_BLACK: (153, 102, 102, 255),
 }
 GREY_VAL = (
     sum(COLOR_VALUES[COLORS.LIGHT_BLUE]) // 4 + sum(COLOR_VALUES[COLORS.PINK])

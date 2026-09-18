@@ -12,10 +12,6 @@ vars:
     {{- else -}}
     {{.ROOT_DIR}}/scripts
     {{- end -}}
-  PTD:
-    sh: 'echo "PTD: {{ .PARENT_TASKFILE_DIR }}"'
-  SD_RES:
-    sh: 'echo "{{.SCRIPT_DIR }}\n{{ .FINAL_SCRIPT_DIR }}\n{{ .HERE_SCRIPT_DIR }}"'
   SCRIBUS_PACKAGE_PATH:
     sh: >-
       {{ .SCRIBUS_EXE}} -g -ns

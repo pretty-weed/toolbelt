@@ -4,18 +4,7 @@ vars:
     sh: which scribus
   SCRIBUS_PYPATH_TMP_FILE: "/tmp/scribus_py_path.txt"
   SCRIBUS_EXE: '{{ .SCRIBUS_EXE | default .SCRIBUS_EXE_WHICH }}'
-  FINAL_SCRIPT_DIR: >-
-    {{ if .PARENT_TASKFILE_DIR }}
-    {{ .PARENT_TASKFILE_DIR }}/scripts
-    {{ else }}
-    {{ .TASKFILE_DIR }}/../scripts
-    {{ end }}
-  SCRIBUS_PACKAGE_PATH:
-    sh: >-
-      {{ .SCRIBUS_EXE}} -g -ns
-      -py {{ .FINAL_SCRIPT_DIR }}/find_scribus_py_loc.py
-      -q --outfile {{ .SCRIBUS_PYPATH_TMP_FILE }};
-      cat {{ .SCRIBUS_PYPATH_TMP_FILE}}
+
   SCRIBUS_CMD: 'scribus'
   VIRTUAL_ENV: '{{ .VIRTUAL_ENV | default ".venv" }}'
   ACTIVATE: 'source {{.VIRTUAL_ENV}}/bin/activate; '
@@ -103,10 +92,9 @@ tasks:
             echo "top file: ${dist_info}/top_level.txt"
             for top_level in $(cat "${dist_info}/top_level.txt"); do
               tl="{{ .TARGET }}${top_level#tl: }"
-              test -d "${tl}" && echo "removing dir:${tl}" && sudo rm -rf "${tl}"
-              test -f "${tl}.py" && echo removing regular file "${tl}.py" && sudo rm -f "${tl}.py"
+              test -d "${tl}" && echo "removing dir:${tl}" && sudo rm -rf "${tl}" || echo "testing py file ${tl}.py" && test -f "${tl}.py" && echo removing regular file "${tl}.py" && sudo rm -f "${tl}.py" || echo "could not find top level item ${tl}"
             done
-            sudo rm -rf $dist_info
+            echo "removing dist info: ${dist_info}" && sudo rm -rf $dist_info && echo "dist_info removed"
           done
 
 
@@ -151,4 +139,4 @@ tasks:
     cmds:
       - task: run-script-headless
         vars:
-          SCRIPT: '{{ .FINAL_SCRIPT_DIR }}/scripts/help_script.py'
+          SCRIPT: '{{ .InstallLib.FINAL_SCRIPT_DIR }}/help_script.py'

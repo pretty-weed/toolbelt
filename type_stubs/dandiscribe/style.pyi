@@ -1,7 +1,6 @@
 import dandiscribe.colors
-import dandiscribe.enums as enums
 from _typeshed import Incomplete
-from dandiscribe.util import ok_to_ignore_dialog as ok_to_ignore_dialog
+from dandiscribe import enums as enums
 from dandy_lib.datatypes.numeric import NonNegInt as NonNegInt
 from dataclasses import dataclass, field
 from typing import TypeAlias

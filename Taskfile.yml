@@ -24,17 +24,20 @@ vars:
   TOOLBELT_TASK_REF: '{{ .TOOLBELT_TASK_REF | default "main"}}'
   TOOLBELT_TASK_PATH: '{{ .TOOLBELT_TASK_PATH | default "task"}}'
   SCRIPT_DIR: '{{ .TASKFILE_DIR }}/scripts'  # Overrides included var from install
+  FINAL_SCRIPT_DIR: '{{ .SCRIPT_DIR }}'
 includes:
   scribus:
     taskfile: "task/Scribus.yml"
     vars:
       SCRIPT_DIR: '{ .TASKFILE_DIR }}/scripts'
+      FINAL_SCRIPT_DIR: '{{ .SCRIPT_DIR }}'
 
   lib:
     taskfile: "task/Install.yml"
     flatten: true
     vars:
       SCRIPT_DIR: '{ .TASKFILE_DIR }}/scripts'
+      FINAL_SCRIPT_DIR: '{{ .SCRIPT_DIR }}'
 
   py-cache:
     # This is what I would use for another repo:
@@ -43,6 +46,7 @@ includes:
     vars:
       WHEEL_CACHE: '{{ .WHEEL_CACHE | default "local" }}'
       SCRIPT_DIR: '{{ .SCRIPT_DIR }}'
+      FINAL_SCRIPT_DIR: '{{ .SCRIPT_DIR }}'
 
 
 tasks:
@@ -105,7 +109,14 @@ tasks:
       - stubgen --package danditools --package dandiscribe --output {{ .STUB_DIR }} {{ .CLI_ARGS }}
       - black {{ .STUB_DIR }}
 
-
+  setup-canvas-tools:
+    vars:
+      BROWSER: 'firefox'
+    sources:
+      - pyproject.toml
+    cmds:
+      - pip install '.[canvas]'
+      - playwright install '{{ .BROWSER }}'
   type-deps:
     internal: true
     aliases: ["type", "typing"]

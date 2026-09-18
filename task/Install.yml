@@ -8,9 +8,9 @@ vars:
   SCRIPT_DIR_IN: '{{ .SCRIPT_DIR }}'
   FINAL_SCRIPT_DIR: >-
     {{- if eq .ROOT_DIR .TASKFILE_DIR -}}
-    {{.TASKFILE_DIR}}/../scripts
-    {{- else -}}
     {{.ROOT_DIR}}/scripts
+    {{- else -}}
+    {{.TASKFILE_DIR}}/../scripts
     {{- end -}}
   SCRIBUS_PACKAGE_PATH:
     sh: >-

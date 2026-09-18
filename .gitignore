@@ -10,3 +10,4 @@ build/**
 .python-version
 .task
 **.log
+playwright_cookies.json

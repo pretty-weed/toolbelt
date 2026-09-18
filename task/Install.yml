@@ -1,0 +1,175 @@
+version: "3"
+vars:
+  SCRIBUS_EXE_WHICH:
+    sh: which scribus
+  SCRIBUS_PYPATH_TMP_FILE: "/tmp/scribus_py_path.txt"
+  SCRIBUS_EXE: '{{ .SCRIBUS_EXE | default .SCRIBUS_EXE_WHICH }}'
+  HERE_SCRIPT_DIR: '{{ .TASKFILE_DIR }}/../scripts'
+  SCRIPT_DIR_IN: '{{ .SCRIPT_DIR }}'
+  FINAL_SCRIPT_DIR: >-
+    {{- if eq .ROOT_DIR .TASKFILE_DIR -}}
+    {{.TASKFILE_DIR}}/../scripts
+    {{- else -}}
+    {{.ROOT_DIR}}/scripts
+    {{- end -}}
+  SCRIBUS_PACKAGE_PATH:
+    sh: >-
+      {{ .SCRIBUS_EXE}} -g -ns
+      -py {{ .FINAL_SCRIPT_DIR }}/find_scribus_py_loc.py
+      -q --outfile {{ .SCRIBUS_PYPATH_TMP_FILE }};
+      cat {{ .SCRIBUS_PYPATH_TMP_FILE}}
+  PATH: >-
+    {{if or (env "VIRTUAL_ENV") (env "CONDA_DEFAULT_ENV")}}
+    {{env "PATH"}}
+    {{else}}
+    {{.USER_WORKING_DIR}}/{{.VENV_DIR}}/bin:{{env "PATH"}}
+    {{end}}
+env:
+  PATH: '{{ .PATH }}'
+
+includes:
+
+  cache:
+    # This is what I would use for another repo:
+    # taskfile: 'https://raw.githubusercontent.com/pretty-weed/toolbelt/refs/heads/main/task/CachePythonDeps.yml'
+    taskfile: './CachePythonDeps.yml'
+    vars:
+      WHEEL_CACHE: '{{ .WHEEL_CACHE | default "local" }}'
+
+tasks:
+
+  ensure-venv:
+    aliases: ["venv", "virtualenv"]
+    internal: true
+    vars:
+      NO_VENV: '{{ .NO_VENV | default "" }}'
+      VENV_CMD: '{{ .VIRTUALENV_CMD | default "virtualenv" }}'
+    if: '{{not (empty .NO_VENV) }}'
+    status:
+      - test -n "{{ .VIRTUAL_ENV }}"
+      - test -d '{{ .VIRTUAL_ENV }}'
+    cmds:
+      - '{{ .VENV_CMD }} {{ .VIRTUAL_ENV }}'
+
+  pip-cmd:
+    internal: true
+    requires:
+      vars:
+        - SUBCOMMAND
+    vars:
+      PACKAGES: &PACKAGES '{{ .PACKAGES | default .CLI_ARGS | default .USER_WORKING_DIR }}'
+      TARGET: '{{ .TARGET | default "" }}'
+      TARGET_FLAG: >
+          {{ if .TARGET -}}
+          --target {{ .TARGET -}}
+          {{- end -}}
+      UPGRADE: '{{ if empty .SKIP_UPGRADE }} --upgrade{{ else }}{{ end }}'
+      FORCE_VAL: '{{ .FORCE | default "true" | trim | lower }}'
+      FORCE_FLAG: >-
+        {{ if not (or
+        (eq .FORCE_VAL "f") (eq .FORCE_VAL "false" ) (eq .FORCE_VAL "0") )
+        }}--force-reinstall {{else}}{{ end}}
+      ED_VAL: '{{ .EDITABLE | default "true" | trim | lower }}'
+      EDITABLE_FLAG: >-
+        {{ if not (or
+        (eq .ED_VAL "f") (eq .ED_VAL "false" ) (eq .ED_VAL "0") )
+        }}-e {{else}}{{ end}}
+      NO_BINARY_VAL: '{{ .NO_BINARY | default "false" | trim | lower }}'
+      NO_BINARY_ARG: >-
+        {{ if (or
+        (eq .NO_BINARY "true") (eq .NO_BINARY "t") (eq .NO_BINARY "1")) }}:all:{{ else }}{{ .NO_BINARY }}{{ end }}
+      NO_BINARY_FULL_FLAGS: >-
+        {{ if not (or
+        (eq .NO_BINARY_VAL "") (eq .NO_BINARY_VAL "f") (eq .NO_BINARY_VAL "false") (eq .NO_BINARY_VAL "0")
+        )}}--no-binary '{{ .NO_BINARY_ARG }}'{{ end }}
+      SUDO: '{{ .SUDO | default "" }}'
+      SPACE: " "
+      PACKAGES_ARGS: >-
+        {{ range splitArgs .PACKAGES -}}
+          {{ $.SPACE }}{{ $.EDITABLE_FLAG }} {{.}} {{end}}
+    preconditions:
+      # I would do this with requires:{vars:{name: enum:}} but that doesn't support a ref it seems
+      - cmd: ":" # TODO, fail if package is not a valid EXTRA
+    cmds:
+      - echo '{{ .TARGET }} {{ .TARGET_FLAG}}'
+      - >-
+        {{ .SUDO }} pip {{ .SUBCOMMAND }}
+        {{ .FORCE_FLAG }} {{ .NO_BINARY_FULL_FLAGS }}
+        {{ .cache.CACHED_INSTALL_FLAGS }} {{ .UPGRADE }}
+        {{ .TARGET_FLAG }}{{ .PACKAGES_ARGS }}
+
+  uninstall:
+    vars:
+      PACKAGES: '{{ .PACKAGES | default .CLI_ARGS | default "danditools" }}'
+      TARGET_VAR: '{{ .TARGET }}'
+      PATH: '{{ if not (empty .TARGET) }}{{.TARGET }}:{{else}}{{end}}{{ .PATH }}'
+      SUDO: '{{ .SUDO }}'
+    env:
+      path: '{{ .PATH }}'
+    cmds:
+      - task: pip-cmd
+        vars:
+          SUBCOMMAND: "uninstall"
+          PACKAGES: '{{ .PACKAGES }}'
+          SKIP_UPGRADE: "true"
+          FORCE: "false"
+          EDITABLE: "false"
+          NO_BINARY: "false"
+          SUDO: '{{ .SUDO }}'
+
+
+  install:
+    aliases: ["I"]
+    vars:
+      PACKAGES: '{{ .PACKAGES | default .CLI_ARGS | default .USER_WORKING_DIR }}'
+      SKIP_UPGRADE: '{{ .SKIP_UPGRADE }}'
+      FORCE: '{{ .FORCE }}'
+      EDITABLE: '{{ .EDITABLE }}'
+      NO_BINARY: '{{ .NO_BINARY }}'
+      TARGET: '{{ .TARGET }}'
+      SUDO: '{{ .SUDO }}'
+
+    cmds:
+      - task: pip-cmd
+        vars:
+          SUBCOMMAND: "install"
+          PACKAGES: '{{ .PACKAGES }}'
+          SKIP_UPGRADE: '{{ .SKIP_UPGRADE }}'
+          FORCE: '{{ .FORCE }}'
+          EDITABLE: '{{ .EDITABLE }}'
+          NO_BINARY: '{{ .NO_BINARY }}'
+          TARGET: '{{ .TARGET }}'
+          SUDO: '{{ .SUDO }}'
+
+  install-tools:
+    deps:
+      - ensure-venv
+    status: &install_status
+      - pip show danditools | grep "Editable project location"
+    cmds:
+      - pip install -e '.[tooling]'
+
+  install-offline:
+    # ToDo: handle github with cached
+    aliases: ["offline-install", "Io"]
+    cmds:
+      - task: install
+        vars: {"OFFLINE": "darnTootin"}
+
+  install-brute:
+    aliases: ["brute-install", "Ib"]
+    cmds:
+      - 'pip wheel {{ .cache.CACHED_INSTALL_FLAGS }} --no-deps {{ .ROOT_DIR}}'
+
+
+  install-shell-scripts:
+    aliases:
+      - install-scripts
+    vars:
+      INSTALL_DIR: '{{ .INSTALL_DIR | default .DEFAULT_BIN_DIR }}'
+    cmds:
+      - echo {{ .DEFAULT_BIN_DIR }}
+      - |
+        for fname in shelltools/*; do
+        test ! -e {{ .INSTALL_DIR }}/$fname && ln -s $(realpath "shelltools/${fname}") "{{.INSTALL_DIR}}/${fname}"
+        done

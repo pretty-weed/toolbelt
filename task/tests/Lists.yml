@@ -1,0 +1,17 @@
+version: '3'
+
+vars:
+  MY_LIST: ['item1', 'item2', 'item3']
+
+tasks:
+  example:
+    vars:
+      # Use CLI_ARGS_LIST if provided, otherwise fallback to MY_LIST
+      ACTIVE_LIST: ->
+        {{ .CLI_ARGS_LIST | default .MY_LIST }}
+      FINAL_LIST:
+        ref: '{{ .MY_LIST }}'
+    cmds:
+      - for:
+          var: FINAL_LIST
+        cmd: echo "Processing {{.ITEM}}"

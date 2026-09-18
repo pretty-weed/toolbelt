@@ -1,0 +1,154 @@
+version: "3"
+vars:
+  SCRIBUS_EXE_WHICH:
+    sh: which scribus
+  SCRIBUS_PYPATH_TMP_FILE: "/tmp/scribus_py_path.txt"
+  SCRIBUS_EXE: '{{ .SCRIBUS_EXE | default .SCRIBUS_EXE_WHICH }}'
+  FINAL_SCRIPT_DIR: >-
+    {{ if .PARENT_TASKFILE_DIR }}
+    {{ .PARENT_TASKFILE_DIR }}/scripts
+    {{ else }}
+    {{ .TASKFILE_DIR }}/../scripts
+    {{ end }}
+  SCRIBUS_PACKAGE_PATH:
+    sh: >-
+      {{ .SCRIBUS_EXE}} -g -ns
+      -py {{ .FINAL_SCRIPT_DIR }}/find_scribus_py_loc.py
+      -q --outfile {{ .SCRIBUS_PYPATH_TMP_FILE }};
+      cat {{ .SCRIBUS_PYPATH_TMP_FILE}}
+  SCRIBUS_CMD: 'scribus'
+  VIRTUAL_ENV: '{{ .VIRTUAL_ENV | default ".venv" }}'
+  ACTIVATE: 'source {{.VIRTUAL_ENV}}/bin/activate; '
+  PYTHON: '{{ .PYTHON_EXE | default "python3" }}'
+  INSTALL_BASE_CMD: "pip show -f danditools | grep '^Location' | sed 's;Location: ;;'"
+env:
+  LOG_LEVEL: '{{ .LOG_LEVEL | default "DEBUG" }}'
+
+includes:
+  installLib:
+    taskfile: ./Install.yml
+    internal: true
+  py-cache:
+    taskfile: ./CachePythonDeps.yml
+    internal: true
+
+tasks:
+  install-usr:
+    aliases: ["scribus-install"]
+    vars:
+      TARGET: '{{ .CLI_ARGS | default "." }}'
+    cmds:
+      - sudo find /usr/share/scribus/scripts/dandi* -name __pycache__ -exec rm -rf {} \; || true
+      - sudo rm -rf /usr/share/scribus/scripts/__pycache__
+      - sudo /usr/bin/python3 -m pip install'
+      - sudo rm -rf ./build
+
+  clean-scribus-pycache:
+    cmds:
+      - task: clean-pycache
+        vars:
+          INSTALL_BASE: '{{ .SCRIBUS_PACKAGE_PATH }}'
+          SUDO: "sudo"
+
+  clean-pycache:
+    interactive: true
+    vars:
+      SUDO: '{{if hasPrefix "sudo" .SUDO}}{{.SUDO}}{{else}}sudo{{end}}'
+    requires:
+      vars:
+        - INSTALL_BASE
+    cmds:
+      - |
+        for fname in $({{ .SUDO }} find {{ .INSTALL_BASE }} -name __pycache__); do
+        {{ .SUDO }} test -e $fname && {{ .SUDO }} rm -rf $fname
+        done
+
+
+  install:
+    help: "Install to the installed scribus site packages"
+    vars:
+      NO_VENV: "yup"
+      PACKAGES: '{{ .CLI_ARGS }}'
+      TARGET: '{{ .SCRIBUS_PACKAGE_PATH }}'
+    deps:
+      - clean-scribus-pycache
+    cmds:
+      - echo '{{ .SCRIBUS_PACKAGE_PATH }}'
+      - task: installLib:install
+        vars:
+          PACKAGES: '{{ .PACKAGES }}'
+          NO_ENV: "YUP"
+          TARGET: '{{ .SCRIBUS_PACKAGE_PATH }}'
+          SUDO: "sudo"
+          EDITABLE: "false"
+          NO_BINARY: "PyYAML"
+          FORCE: "true"
+
+
+
+  uninstall:
+    help: "Uninstall package from the installed scribus site packages"
+    vars:
+      NO_VENV: "yup"
+      PACKAGES: 'danditools'
+      TARGET: '{{ .SCRIBUS_PACKAGE_PATH }}'
+    deps:
+      - clean-scribus-pycache
+    cmds:
+      - for:
+          - danditools
+          - dandy_lib
+        cmd: |
+          for dist_info in $(sudo find '{{ .SCRIBUS_PACKAGE_PATH }}' -name '{{ .ITEM }}-*.dist-info'); do
+            echo "top file: ${dist_info}/top_level.txt"
+            for top_level in $(cat "${dist_info}/top_level.txt"); do
+              tl="{{ .TARGET }}${top_level#tl: }"
+              test -d "${tl}" && echo "removing dir:${tl}" && sudo rm -rf "${tl}"
+              test -f "${tl}.py" && echo removing regular file "${tl}.py" && sudo rm -f "${tl}.py"
+            done
+            sudo rm -rf $dist_info
+          done
+
+
+
+  run-script:
+    aliases: ["run"]
+    deps:
+      - installLib:ensure-venv
+    vars:
+      SCRIBUS_GUI: '{{ .SCRIBUS_GUI | default "" }}'
+      SCRIBUS_SPLASH: '{{ .SCRIBUS_SPLASH | default "" }}'
+      SCRIBUS_CMD_ARGS: >-
+        {{ if .SCRIBUS_GUI }}{{ else }} -g{{ end }}
+        {{ if .SCRIBUS_SPLASH }}{{ else }} -ns{{ end }}
+      SCRIPT: &SCRIPTVAR '{{ .SCRIPT | default "" }}'
+    preconditions:
+      - 'test -n "{{ .CLI_ARGS }}"'
+    cmds:
+      - '{{ .ACTIVATE }}{{ .SCRIBUS_CMD }} {{.SCRIBUS_CMD_ARGS }} -py {{ .SCRIPT }} {{ .CLI_ARGS }}'
+
+  run-script-headless:
+    aliases: ["run-headless", "run-hdls"]
+    vars: &SCRIPTVARS
+      SCRIPT: *SCRIPTVAR
+    cmds:
+      - task: run-script
+        vars:
+          SCRIBUS_GUI: ""
+          SCRIPT: '{{ .SCRIPT }}'
+
+  run-script-gui:
+    aliases: ["run-gui"]
+    vars: *SCRIPTVARS
+    cmds:
+      - task: run-script
+        vars:
+          SCRIBUS_GUI: "yup"
+          SCRIPT: '{{ .SCRIPT }}'
+
+  help:
+    aliases: ["scripter-help"]
+    cmds:
+      - task: run-script-headless
+        vars:
+          SCRIPT: '{{ .FINAL_SCRIPT_DIR }}/scripts/help_script.py'

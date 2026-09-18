@@ -52,6 +52,7 @@ type = [
     "types-requests",
     "mypy~=1.18"
 ]
+canvas = ["browser-cookie3==0.20.1", "playwright"]
 clean = [
     "coverage~=7.12"
 ]

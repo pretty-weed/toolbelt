@@ -1,22 +1,21 @@
+import sys
+import unittest
 from datetime import date, datetime, time, timedelta
 from enum import Enum
-import sys
-
-import unittest
-import unittest.mock as mock
-
-import pytest
+from unittest import mock
 
 from .scribus_module_mock import ScribusSpec
 
 # todo, setup dir of scribus
 with mock.patch.dict(sys.modules, scribus=ScribusSpec):
     import dandiscribe.calendar
+    from dandiscribe.calendar.data import Task
 
 ALL_DAY_DURATION = dandiscribe.calendar.Duration(time(), time(23, 59, 59))
 MIDNIGHT_TO_ONE_DURATION = dandiscribe.calendar.Duration(time(), time(1))
 NOON_TO_18_DURATION = dandiscribe.calendar.Duration(time(12), time(18))
 PM_DURATION = dandiscribe.calendar.Duration(time(12), time(23, 59, 59))
+AM_DURATION = dandiscribe.calendar.Duration(time(hour=0), time(hour=12))
 
 
 class SampleDurationEnum(Enum):
@@ -45,9 +44,29 @@ class TestDurations(unittest.TestCase):
         three_time = time(3)
         three_thirty_time = time(3, 30)
 
-        self.assertTrue(three_dt in ALL_DAY_DURATION)
-        self.assertTrue(midnight_time in ALL_DAY_DURATION)
-        self.assertFalse(three_oh_one_dt in NOON_TO_18_DURATION)
+        for msg, daystart_task in [
+            (
+                "datetime due date",
+                Task(
+                    "foo",
+                    description="bar",
+                    due=datetime.combine(date.today(), time=time.min),
+                ),
+            ),
+            ("date due date", Task("foo", "bar", due=date.today())),
+        ]:
+            with self.subTest(msg, task=daystart_task):
+                self.assertTrue(daystart_task in ALL_DAY_DURATION)
+                self.assertTrue(daystart_task in AM_DURATION)
+
+        with self.subTest("Datetime, 0300", datetime=three_dt):
+            self.assertTrue(three_dt in ALL_DAY_DURATION)
+        with self.subTest("time, 0000", time=midnight_time):
+            self.assertTrue(midnight_time in ALL_DAY_DURATION)
+        with self.subTest(
+            "Datetime, 0301 not Noon-1800", datetime=three_oh_one_dt
+        ):
+            self.assertFalse(three_oh_one_dt in NOON_TO_18_DURATION)
         self.assertFalse(three_time in NOON_TO_18_DURATION)
 
         self.assertTrue(SampleDurationEnum.NOON_TO_18 in PM_DURATION)

@@ -31,6 +31,7 @@ includes:
     vars:
       SCRIPT_DIR: '{ .TASKFILE_DIR }}/scripts'
       FINAL_SCRIPT_DIR: '{{ .SCRIPT_DIR }}'
+      TARGET: '{{ .TARGET }}'
 
   lib:
     taskfile: "task/Install.yml"

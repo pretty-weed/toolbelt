@@ -12,6 +12,10 @@ vars:
     {{- else -}}
     {{.TASKFILE_DIR}}/../scripts
     {{- end -}}
+  HOME_DIR:
+    sh: echo -n $HOME
+  DEFAULT_FONT_DIR: '{{ .HOME_DIR }}/.local/share/fonts'
+  FONT_DIR: '{{ .FONT_DIR | default .DEFAULT_FONT_DIR }}'
   SCRIBUS_PACKAGE_PATH:
     sh: >-
       {{ .SCRIBUS_EXE}} -g -ns
@@ -37,7 +41,29 @@ includes:
       WHEEL_CACHE: '{{ .WHEEL_CACHE | default "local" }}'
 
 tasks:
-
+  font-dir:
+    internal: true
+  fonts:
+    vars:
+      FONT_SUBDIR: src/dandiscribe/fonts
+      FONT_SOURCE: >-
+        {{- if eq .ROOT_DIR .TASKFILE_DIR -}}
+        {{.ROOT_DIR}}/{{ .FONT_SUBDIR }}
+        {{- else -}}
+        {{.TASKFILE_DIR}}/../{{ .FONT_SUBDIR }}
+        {{- end -}}
+    deps:
+      - font-dir
+    cmds:
+      - |
+        find {{ .FONT_SOURCE }} '(' -name '*.ttf' -o -name '*.otf' ')' -exec bash -c '
+          font="$1"
+          if [ ! -f {{ .FONT_DIR }}/"$(basename "$font")" ]; then
+              cp "$font" {{ .FONT_DIR }}/
+              echo "Installed: $font"
+          else
+              echo "Skipped (Already Installed): $font"
+          fi' _ {} \;
   ensure-venv:
     aliases: ["venv", "virtualenv"]
     internal: true
@@ -53,6 +79,7 @@ tasks:
 
   pip-cmd:
     internal: true
+    label: 'pip {{ .SUBCOMMAND }} {{ .PACKAGES }}'
     requires:
       vars:
         - SUBCOMMAND

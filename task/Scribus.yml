@@ -69,7 +69,7 @@ tasks:
           NO_ENV: "YUP"
           TARGET: '{{ .SCRIBUS_PACKAGE_PATH }}'
           SUDO: "sudo"
-          EDITABLE: "false"
+          EDITABLE: "true"
           NO_BINARY: "PyYAML"
           FORCE: "true"
 
@@ -80,6 +80,7 @@ tasks:
     vars:
       NO_VENV: "yup"
       PACKAGES: 'danditools'
+      CLEAN_PATH: '{{ .TARGET | default .SCRIBUS_PACKAGE_PATH }}'
       TARGET: '{{ .SCRIBUS_PACKAGE_PATH }}'
     deps:
       - clean-scribus-pycache
@@ -88,11 +89,20 @@ tasks:
           - danditools
           - dandy_lib
         cmd: |
-          for dist_info in $(sudo find '{{ .SCRIBUS_PACKAGE_PATH }}' -name '{{ .ITEM }}-*.dist-info'); do
+          for dist_info in $(sudo find '{{ .CLEAN_PATH }}' -name '{{ .ITEM }}-*.dist-info'); do
             echo "top file: ${dist_info}/top_level.txt"
             for top_level in $(cat "${dist_info}/top_level.txt"); do
               tl="{{ .TARGET }}${top_level#tl: }"
-              test -d "${tl}" && echo "removing dir:${tl}" && sudo rm -rf "${tl}" || echo "testing py file ${tl}.py" && test -f "${tl}.py" && echo removing regular file "${tl}.py" && sudo rm -f "${tl}.py" || echo "could not find top level item ${tl}"
+              echo "checking ${tl}"
+              if [ -d "${tl}" ]; then
+                echo "removing dir:${tl}"
+                sudo rm -rf "${tl}"
+              elif [ -f "${tl}" ]; then
+                echo removing regular file "${tl}.py"
+                sudo rm -f "${tl}.py"
+              else
+                echo "could not find top level item ${tl}"
+              fi
             done
             echo "removing dist info: ${dist_info}" && sudo rm -rf $dist_info && echo "dist_info removed"
           done

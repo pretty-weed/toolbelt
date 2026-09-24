@@ -1,25 +1,15 @@
-from importlib.resources.abc import Traversable
-
-
-from argparse import _SubParsersAction, ArgumentError, ArgumentParser, Namespace
-from enum import Enum
 import importlib
+import logging
+import sys
+import traceback
+from argparse import ArgumentError, ArgumentParser, Namespace, _SubParsersAction
 from importlib.resources import as_file, files
 from importlib.resources.abc import Traversable
-import logging
 from os import getenv
 from pathlib import Path
-from re import U
-import sys
-import tempfile
-import traceback
 from typing import Any, NamedTuple
 
-from dandy_lib.cli.parser import add_output_force_overwrite_to_parser
 from dandy_lib.cli.enums import EnumAction
-
-from numpy import test
-from scribus import inch
 
 # test_pages-n.sla has n pages, including front and back cover.
 TEST_SOURCE_8 = files("dandiscribe.source_files").joinpath("test_pages-8.sla")
@@ -42,18 +32,14 @@ from dandiscribe import script_utils
 
 importlib.reload(script_utils)
 script_utils.reload()
-from dandiscribe.zine import layout as zine_layout
 from dandiscribe.data import Margins, Size
+from dandiscribe.enums import InsertPaddingPages, PaperSize, Unit
+from dandiscribe.log import configure
+from dandiscribe.zine import layout as zine_layout
 from dandiscribe.zine.layout import (
     FinalDoc,
     Layout,
-    LayoutVal,
-    QUARTER_DOC,
-    HALF_DOC,
 )
-from dandiscribe.enums import InsertPaddingPages, PaperSize, Unit, UnitType
-from dandiscribe.log import configure
-
 
 MAKE_OUT_DIR: bool = getenv("MAKE_TEST_ZINE_DIR", "").lower() in [
     "t",
@@ -315,7 +301,7 @@ def main() -> None:
     parser.set_defaults(action=run_layout)
     try:
         parsed: Namespace = parser.parse_args()
-    except ArgumentError as exc:
+    except ArgumentError:
         sys.argv.insert(1, "run")
         # parser.exit_on_error = True
         LOGGER.exception("inserting default run arg")

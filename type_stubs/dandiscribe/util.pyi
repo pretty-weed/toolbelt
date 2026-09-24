@@ -4,10 +4,7 @@ from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from dandiscribe.data import Rect as Rect, Size as Size
 from dandiscribe.enums import Unit as Unit
-from dandiscribe.exceptions import (
-    NoSuchMasterPage as NoSuchMasterPage,
-    WrongPageError as WrongPageError,
-)
+from dandiscribe.exceptions import NoSuchMasterPage as NoSuchMasterPage
 from dandiscribe.log import configure as configure
 from dandiscribe.scribus_data import ScribusItem as ScribusItem
 from dandy_lib.datatypes.twodee import Vector as Vector
@@ -132,7 +129,7 @@ def copy_items(
     dest: CopyDest,
     source_box: Rect | None = None,
     target_box: Rect | None = None,
-    rotation: float | int | None = None,
+    rotation: float | None = None,
     transform_hander: TransformHandler = ...,
 ) -> str: ...
 

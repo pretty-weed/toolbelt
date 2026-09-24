@@ -54,12 +54,26 @@ class VAlign(IntEnum):
 
 
 @unique
+class VAlignSimple(IntEnum):
+    TOP = VAlign.TOP
+    CENTERED = VAlign.CENTERED
+    BOTTOM = VAlign.BOTTOM
+
+
+@unique
 class HAlign(IntEnum):
     LEFT = scribus.ALIGN_LEFT
     CENTERED = scribus.ALIGN_CENTERED
     RIGHT = scribus.ALIGN_RIGHT
     FORCED_JUSTIFY = scribus.ALIGN_FORCED
     JUSTIFY = scribus.ALIGN_BLOCK
+
+
+@unique
+class HAlignSimple(IntEnum):
+    LEFT = HAlign.LEFT
+    CENTERED = HAlign.CENTERED
+    RIGHT = HAlign.RIGHT
 
 
 @unique
@@ -83,6 +97,7 @@ class FontFaces(StrEnum):
     CHANCERY_BOLD = "QTChanceryType Bold"
     CHANCERY_ITALIC = "QTChanceryType Italic"
     FRAKTUR = "Des Malers Fraktur Regular"
+    OPENMOJI = "OpenMoji Regular"
 
 
 class LinespacingMode(IntEnum):

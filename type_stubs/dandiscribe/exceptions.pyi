@@ -1,5 +1,4 @@
 from _typeshed import Incomplete
-from shutil import ExecError as ExecError
 from typing import Any
 
 class NewDocError(Exception): ...
@@ -9,6 +8,21 @@ class NoObjects(Exception):
     doc: Incomplete
     page: Incomplete
     def __init__(self, document: str, page: int) -> None: ...
+
+class SizeException(BaseException): ...
+
+class TooSmall(SizeException):
+    DEFICIENCY: str
+    minimum: float
+    actual: float
+    def __init__(
+        self, minimum: float, actual: float, object: str | None = None
+    ) -> None: ...
+
+class TooShort(TooSmall):
+    DEFICIENCY: str
+
+class DrawError(Exception): ...
 
 class WrongPageError(Exception):
     extra: dict[str, Any]

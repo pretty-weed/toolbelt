@@ -24,7 +24,6 @@ from dandiscribe.data import Rect, Size
 from dandiscribe.enums import Unit
 from dandiscribe.exceptions import (
     NoSuchMasterPage,
-    WrongPageError,
 )
 from dandiscribe.log import configure
 from dandiscribe.scribus_data import ScribusItem
@@ -309,20 +308,13 @@ class TempGoToBase(Generic[Tmp]):
     def __enter__(self):
         # todo handle returning to master pages
         self._goto_page()
-        if self.current == self.page:
-            LOGGER.debug(
-                "%s GOTO current: %i , goto: %i", self, self.current, self.page
-            )
-            raise WrongPageError()
         return self.current
 
     def __exit__(
         self, type: type[Exception], value: Exception, traceback: TracebackType
     ):
         if self.current != self.page:
-            LOGGER.debug(
-                "%s EXIT current: %i , goto: %i", self, self.current, self.page
-            )
+
             self._go_back()
 
 
@@ -330,9 +322,14 @@ class TempGoTo(TempGoToBase[int]):
 
     @override
     def _goto_page(self, go_back: bool = False) -> None:
-        go_page: int = self._get_goto_page(go_back)
+        if go_back:
 
-        scribus.gotoPage(go_page)
+            go_page = self.current
+        else:
+            self.current = scribus.currentPage()
+            go_page = self.page
+        if self.current != self.page:
+            scribus.gotoPage(go_page)
 
 
 class TempGoToMaster(TempGoToBase[str]):
@@ -436,7 +433,7 @@ def copy_items(
     dest: CopyDest,
     source_box: Rect | None = None,
     target_box: Rect | None = None,
-    rotation: float | int | None = None,
+    rotation: float | None = None,
     transform_hander: TransformHandler = no_skew,
 ) -> str:
     LOGGER.info(f"Copying from {source} to {dest}")
@@ -537,9 +534,9 @@ def copy_items(
         scribus.rotateObject(rotation, pgroup)
         try:
             scribus.moveObject(*scribus.getSize(pgroup), pgroup)
-        except TypeError as exc:
+        except TypeError:
             LOGGER.exception(
-                f"Typerror: {pgroup} ({type(pgroup)} [{repr(pgroup)}])"
+                f"Typerror: {pgroup} ({type(pgroup)} [{pgroup!r}])"
             )
             raise
     return pgroup

@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import logging
 from dataclasses import asdict, dataclass, field, fields
 from functools import lru_cache
-from typing import NamedTuple, Self, TypeVar, override
+from types import TracebackType
+from typing import ClassVar, NamedTuple, Protocol, Self, TypeVar, override
 
 import scribus
 from dandy_lib.datatypes.twodee import Size
@@ -17,6 +20,30 @@ PAPER_LETTER: Size = Size(*scribus.PAPER_LETTER)
 PAPER_A4: Size = Size(*scribus.PAPER_A4)
 PAPER_A5: Size = Size(*scribus.PAPER_A5)
 
+DEFAULT_MARGINS = Margins(top=10.0, right=10.0, bottom=10.0, left=15.0)
+DEFAULT_SPREAD_MARGINS: Margins = Margins(
+    top=10.0, right=10.0, bottom=15.0, left=25.0
+)
+
+
+class PageProtocol(Protocol):
+    page_number: int
+    size: Size
+    master_page: str | None
+    is_master: bool
+    desired_margins: Margins
+
+    MasterClass: ClassVar[type[MasterPage] | None]
+
+    def __enter__(self) -> None: ...
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> bool | None: ...
+
 
 @dataclass
 class Page:
@@ -24,23 +51,52 @@ class Page:
     size: Size = Size.factory(*scribus.PAPER_A5)
     master_page: str | None = None
     is_master: bool = False
+    desired_margins: Margins = DEFAULT_MARGINS
+
+    MasterClass: ClassVar[type[MasterPage] | None] = None
 
     def as_page(self) -> Self:
         return self.__class__(**(asdict(self) | {"is_master": False}))
 
+    @classmethod
+    def get_master_page_class(cls) -> type[MasterPage]:
+        if cls.MasterClass is None:
+
+            @dataclass
+            class SpecificMasterPage(MasterPage, cls):
+
+                def __post_init__(self):
+                    assert self.is_master
+
+            cls.MasterClass = SpecificMasterPage
+
+        return cls.MasterClass
+
     def get_master_page(self) -> MasterPage:
-        print("in get_master_page")
-        print(self)
-        page_fields = [f.name for f in fields(MasterPage) if f.init]
-        return MasterPage(
-            **({k: v for k, v in asdict(self).items() if k in page_fields})
+        MasterClass = self.get_master_page_class()
+        page_fields = [f.name for f in fields(MasterClass) if f.init]
+
+        return MasterClass(
+            **(
+                {
+                    k: v
+                    for k, v in asdict(self).items()
+                    if k in page_fields and k != "is_master"
+                }
+            )
         )
 
-    def get_margins_and_usable_size(self) -> tuple[Margins, Size]:
+    def get_margins_and_usable_size(
+        self, check_margins: bool = False
+    ) -> tuple[Margins, Size]:
         try:
             margins = Margins(*scribus.getPageMargins())
         except TypeError as exc:
             raise TypeError(f"value is {scribus.getPageMargins()}") from exc
+        if check_margins and margins != self.desired_margins:
+            raise ValueError(
+                f"Expected margins for page {self} to be {self.desired_margins}, they are {margins}"
+            )
         return (
             margins,
             Size(
@@ -54,8 +110,6 @@ class Page:
             assert self.master_page
             if self.master_page not in scribus.masterPageNames():
                 self.make()
-            # TOREMOVE
-            raise ValueError("NO")
             scribus.editMasterPage(self.master_page)
         else:
             assert self.page_number
@@ -92,6 +146,37 @@ class Page:
 
 
 @dataclass
+class SpreadPageMixin:
+    inside_margin: float = 72  # in points
+    outside_margin: float = 72  # in points
+    side: PAGESIDE = PAGESIDE.EITHER
+    desired_margins: Margins = DEFAULT_SPREAD_MARGINS
+
+    def __post_init__(self: SpreadPageComposedProtocol):
+        if not self.is_master:
+            match self.side:
+                case PAGESIDE.LEFT:
+                    self.desired_margins = self.desired_margins.with_left(
+                        self.outside_margin
+                    ).with_right(self.inside_margin)
+                case PAGESIDE.RIGHT:
+                    self.desired_margins = self.desired_margins.with_right(
+                        self.outside_margin
+                    ).with_left(self.inside_margin)
+
+
+class SpreadPageComposedProtocol(PageProtocol, Protocol):
+    inside_margin: float = 72  # in points
+    outside_margin: float = 72  # in points
+    side: PAGESIDE = PAGESIDE.EITHER
+
+
+@dataclass
+class SpreadPage(Page, SpreadPageMixin):
+    pass
+
+
+@dataclass
 class MasterPage(Page):
 
     is_master: bool = field(
@@ -103,20 +188,8 @@ class MasterPage(Page):
         return str(self.master_page)
 
     @override
-    def draw(self) -> None:  # type: ignore[override]  # pyright: ignore[reportIncompatibleMethodOverride]
-        return Page.draw(self)
-
-
-@dataclass
-class SpreadPageMixin:
-    inside_margin: float = 72  # in points
-    outside_margin: float = 72  # in points
-    side: PAGESIDE = PAGESIDE.EITHER
-
-
-@dataclass
-class SpreadPage(Page, SpreadPageMixin):
-    pass
+    def draw(self, bake_master: bool = True) -> None:  # type: ignore[override]  # pyright: ignore[reportIncompatibleMethodOverride]
+        return super().draw(bake_master=bake_master)
 
 
 class Sheet(NamedTuple):
@@ -165,6 +238,7 @@ def get_mpage_sizes() -> dict[str, Size]:
 class Document:
     pages: list[Page] = field(default_factory=list)
     masterpages: dict[str, MasterPage] = field(default_factory=dict)
+    desired_margins: Margins | None = None
 
     @classmethod
     def from_current(cls) -> Self:
@@ -227,13 +301,17 @@ class Document:
 
     def make(self):
         assert len(set(page.size for page in self.pages)) == 1
+        margins = (
+            self.desired_margins if self.desired_margins else DEFAULT_MARGINS
+        )
         if not scribus.newDocument(
             # TODO ensure page uniformity
             tuple(self.pages[0].size),
-            (10, 10, 10, 15),
+            margins,
             scribus.PORTRAIT,
             1,
             scribus.UNIT_POINTS,
+            # ToDo Make this customizable
             scribus.PAGE_2,
             1,
             len(self.pages),
@@ -275,3 +353,15 @@ class Document:
             scribus.progressSet((done + 1) // total)
             page.draw(*draw_args, **draw_kwargs)
             done += 1
+
+    def set_margins(self, margins: None | Margins):
+        if margins is not None:
+            self.desired_margins = margins
+        return self.set_margins_to_desired()
+
+    def set_margins_to_desired(self) -> Margins:
+        if self.desired_margins is None:
+            raise TypeError(
+                f"{Page} cannot set margins, as desired margins are unset"
+            )
+        scribus.setMargins()

@@ -4,7 +4,7 @@ ToDo:
 """
 
 from types import CapsuleType
-from typing import Any, Callable, Self, SupportsIndex, override
+from typing import Any, Self, SupportsIndex, override
 from warnings import deprecated
 
 # =======
@@ -81,7 +81,7 @@ class ImageExport:
     def __dir__(self) -> list[str]: ...
     __doc__: str
     @override
-    def __eq__(self, value: Any) -> bool: ...
+    def __eq__(self, value: object) -> bool: ...
     @override
     def __format__(self, format_spec: str): ...
     def __ge__(self, value: Any) -> bool: ...
@@ -96,7 +96,7 @@ class ImageExport:
     def __le__(self, value: Any) -> bool: ...
     def __lt__(self, value: Any) -> bool: ...
     @override
-    def __ne__(self, value: Any) -> bool: ...
+    def __ne__(self, value: object) -> bool: ...
     # ToDo Figure out what `Any`s should be
     def __new__(cls, *args: Any, **kwargs: Any) -> Self: ...
     @override
@@ -194,7 +194,7 @@ class PDFfile:
     def save(self) -> None: ...
     # solidpr: <class 'getset_descriptor'>
     # subsetList: <class 'getset_descriptor'>
-    # thumbnails: <class 'member_descriptor'>
+    thumbnails: bool
     # useDocBleeds: <class 'member_descriptor'>
     # useLayers: <class 'member_descriptor'>
     # uselpi: <class 'member_descriptor'>
@@ -206,7 +206,7 @@ class Printer:
     def __init__(self, *args: Any, **kwargs: Any) -> None: ...
     def __dir__(self) -> list[str]: ...
     __doc__: str
-    def __eq__(self: Self, value: Any) -> bool: ...
+    def __eq__(self: Self, value: object) -> bool: ...
     def __format__(self, format_spec): ...
     def __ge__(self: Self, value: Any) -> bool: ...
     def __getattribute__(self, name: str) -> Any: ...
@@ -218,7 +218,7 @@ class Printer:
     def __le__(self: Self, value: Any) -> bool: ...
     def __lt__(self: Self, value: Any) -> bool: ...
     @override
-    def __ne__(self: Self, value: Any) -> bool: ...
+    def __ne__(self: Self, value: object) -> bool: ...
     def __new__(cls, *args: Any, **kwargs: Any) -> Self: ...
     @override
     def __reduce__(self) -> tuple[Any, ...]: ...
@@ -477,7 +477,6 @@ def setLineCap(endType: int, name: str = "") -> None:
     constants for "cap" - CAP_<type>.
 
     """
-    ...
 
 def setLineColor(color: str, name: str = "") -> None:
     """
@@ -487,7 +486,6 @@ def setLineColor(color: str, name: str = "") -> None:
     not given the currently selected item is used.
 
     """
-    ...
 
 def setLineJoin(join: int, name: str = "") -> None:
     """
@@ -498,7 +496,6 @@ def setLineJoin(join: int, name: str = "") -> None:
     predefined constants for join - JOIN_<type>.
 
     """
-    ...
 
 def setLineShade(shade: int, name: str = "") -> None:
     """
@@ -510,7 +507,6 @@ def setLineShade(shade: int, name: str = "") -> None:
 
     May raise ValueError if the line shade is out of bounds.
     """
-    ...
 
 def setLineSpacing(size: float, name: str = "") -> None:
     """
@@ -522,7 +518,6 @@ def setLineSpacing(size: float, name: str = "") -> None:
 
     May throw ValueError if the line spacing is out of bounds.
     """
-    ...
 
 def setLineSpacingMode(mode: int, name: str = "") -> None:
     """
@@ -538,7 +533,6 @@ def setLineSpacingMode(mode: int, name: str = "") -> None:
         automatic linespacing:      1
         baseline grid linespacing:  2
     """
-    ...
 
 def setLineStyle(style: int, name: str = "") -> None:
     """
@@ -550,7 +544,6 @@ def setLineStyle(style: int, name: str = "") -> None:
     "style" - LINE_<style>. In Property Palette this feature is selected in box
     named 'Type of line'
     """
-    ...
 
 def setLineTransparency(transparency: float, name: str = "") -> None:
     """
@@ -559,7 +552,6 @@ def setLineTransparency(transparency: float, name: str = "") -> None:
     Sets the line transparency of the object "name" to transparency If "name" is
     not given the currently selected item is used.
     """
-    ...
 
 def setLineWidth(width: float, name: str = "") -> None:
     """setLineWidth(width, ["name"])
@@ -570,7 +562,6 @@ def setLineWidth(width: float, name: str = "") -> None:
 
     May raise ValueError if the line width is out of bounds.
     """
-    ...
 
 # =======
 # # Item
@@ -622,7 +613,6 @@ def createBezierLine(points: list[float], name: str = "") -> str:
     "name" should be a unique identifier for the object because you need this
     name for further access to that object. If "name" is not given Scribus will
     create one for you."""
-    ...
 
 # ToDo Check if these need to be float, or int is ok
 def createLine(
@@ -643,10 +633,10 @@ def createPolygon(
     points: list[float | int], name: str | None = None
 ) -> str: ...
 def createRect(
-    x: float | int,
-    y: float | int,
-    width: float | int,
-    height: float | int,
+    x: float,
+    y: float,
+    width: float,
+    height: float,
     name: str = "",
 ) -> str: ...
 
@@ -695,7 +685,7 @@ def setCellTopPadding() -> Any: ...  # TODO fill in return
 def createCharStyle(
     name: str,
     font: str = "",
-    fontsize: float = float(),
+    fontsize: float = 0.0,
     features: str = "",
     fillcolor: str = "",
     fillshade: str = "",
@@ -872,7 +862,6 @@ def getUnit() -> int:
         * UNIT_PICAS
         * UNIT_POINTS
     """
-    ...
 
 def getVGuides() -> Any: ...  # TODO fill in return
 def getVisualBoundingBox() -> Any: ...  # TODO fill in return
@@ -886,7 +875,7 @@ def importPage() -> Any: ...  # TODO fill in return
 def insertHtmlText() -> Any: ...  # TODO fill in return
 def insertTableColumns() -> Any: ...  # TODO fill in return
 def insertTableRows() -> Any: ...  # TODO fill in return
-def insertText() -> Any: ...  # TODO fill in return
+def insertText(text: str, pos: int, name: str = "") -> None: ...
 def isAnnotated() -> Any: ...  # TODO fill in return
 def isExportable() -> Any: ...  # TODO fill in return
 def isLocked() -> Any: ...  # TODO fill in return
@@ -920,7 +909,6 @@ def pointsToDocUnit(points: float) -> float:
     """
     Returns a value in the measurement units of the document converted from points.
     """
-    ...
 
 def progressReset() -> Any: ...  # TODO fill in return
 def progressSet(progress: float) -> Any: ...  # TODO fill in return
@@ -1029,14 +1017,12 @@ def valueDialog(caption: str, message: str, defaultvalue: str = "") -> str:
 
     Example: valueDialog('title', 'text in the window', 'optional')
     """
-    ...
 
 def zoomDocument(zoom: float) -> None:
     """
     Zoom the document in main GUI window. Actions have whole number values like
     20.0, 100.0, etc. Zoom to Fit uses -100 as a marker.
     """
-    ...
 
 # =======
 # <class 'float'>s

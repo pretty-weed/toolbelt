@@ -20,12 +20,12 @@ Therapy:
     weekdays: [1]
     time_of_day: "14:00"
 
-"Theology in a time of Fascism":
+"Intro to Hebrew Bible":
   routine_time:
     weekdays: [3]
-    duration: 3h
-    time_of_day: "13:00"
-    end: "2025-12-13"
+    duration: 2h
+    time_of_day: "16:00"
+    end: "2026-12-13"
 
 #sample_mwf_pm:
 #  routine_time:

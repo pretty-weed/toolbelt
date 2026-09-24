@@ -1,7 +1,17 @@
 import cProfile
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
-from logging import DEBUG, INFO, basicConfig, getLogger
+from logging import (
+    DEBUG,
+    INFO,
+    WARNING,
+    basicConfig,
+    getLogger,
+)
+from logging import (
+    root as RootLogger,
+)
 from pathlib import Path
 from re import Match, compile
 
@@ -26,12 +36,10 @@ from dandiscribe.calendar.pages import (
     A5MonthSpreadPage,
     A5NotesPage,
     A5WeekSpreadPage,
-    CalendarPage,
     gen_notes_spread_pages,
 )
 from dandiscribe.enums import PAGESIDE
-from dandiscribe.exceptions import NewDocError
-from dandiscribe.layout import MasterPage
+from dandiscribe.layout import Document as BaseDocument
 from dandiscribe.util import (
     MISSING,
     Debug,
@@ -55,31 +63,40 @@ logger = getLogger(__name__)
 logger.setLevel(DEBUG)
 
 
-def _delta_from_match(orig: date, match: Match) -> timedelta:
+def delta_from_match_helper(match: Match[str]) -> Callable[[date], timedelta]:
     n, unit = match.groups()
     n = int(n)
     unit = unit.lower()
 
-    try:
-        if unit == "y":
-            return date(orig.year + n, orig.month, orig.day) - orig
-        elif unit == "m":
-            zero_month = orig.month + n - 1
-            res = (
-                date(
-                    orig.year + (zero_month // 12),
-                    (zero_month % 12) + 1,
-                    orig.day,
+    def factory(start: date) -> timedelta:
+
+        try:
+            if unit == "y":
+                return date(start.year + n, start.month, start.day) - orig
+            elif unit == "m":
+                zero_month = start.month + n - 1
+                res = (
+                    date(
+                        start.year + (zero_month // 12),
+                        (zero_month % 12) + 1,
+                        start.day,
+                    )
+                    - start
                 )
-                - orig
-            )
-            return res
-        elif unit == "d":
-            return timedelta(days=n)
-        else:
-            raise ValueError("unexpected unit")
-    except ValueError as exc:
-        raise ValueError(f"{orig} - {unit} - {n}") from exc
+                return res
+            elif unit == "d":
+                return timedelta(days=n)
+            else:
+                raise ValueError("unexpected unit")
+        except ValueError as exc:
+            raise ValueError(f"{start} - {n}{unit}") from exc
+
+    return factory
+
+
+def delta_from_match(orig: date, match: Match[str]) -> timedelta:
+    factory = delta_from_match_helper(match)
+    return factory(orig)
 
 
 def load_routine_tasks(routines_file=ROUTINES_FILE) -> list[Task]:
@@ -98,33 +115,26 @@ def prompt_to_date(prompt_str, start_date: datetime) -> datetime | date:
     match = TIME_DELTA_RE.match(prompt_str)
 
     if match:
-        return start_date + _delta_from_match(start_date, match)
+        return start_date + delta_from_match(start_date, match)
     return date.fromisoformat(prompt_str.replace("/", "-").replace(".", "-"))
 
 
 @dataclass
-class Document:
-    pages: list[CalendarPage] = field(default_factory=list)
-    masterpages: dict[str, MasterPage] = field(default_factory=dict)
+class Document(BaseDocument):
 
-    def make(self):
-        assert len(set(page.size for page in self.pages)) == 1
-        if not scribus.newDocument(
-            tuple(self.pages[0].size),
-            (10, 10, 10, 15),
-            scribus.PORTRAIT,
-            1,
-            scribus.UNIT_POINTS,
-            scribus.PAGE_2,
-            1,
-            len(self.pages),
-        ):
-            raise NewDocError()
+    def date_range(self) -> tuple[date, date]:
+        min_date = min_date = self.pages[0].page_date
+        dates = [page.page_date for page in self.pages]
+        return min(dates), max(dates)
 
     def draw(
-        self, tasks: list[Task] | None = None, events: list[Event] | None = None
+        # TODO see if this can be moved upstream
+        self,
+        tasks: list[Task] | None = None,
+        events: list[Event] | None = None,
     ):
-        events_by_date = get_events_by_date(events)
+        min_date, max_date = self.date_range()
+        events_by_date = get_events_by_date(events, min_date, max_date)
         # make master pages
         scribus.progressReset()
         mp_count = len(set(page.master_page for page in self.pages))
@@ -135,10 +145,12 @@ class Document:
                 page.master_page is not None
                 and page.master_page not in self.masterpages
             ):
+                print(f"making master page {page.master_page}")
                 scribus.progressSet((done + 1) // total)
                 master_page = page.get_master_page()
                 self.masterpages[page.master_page] = master_page
                 master_page.make()
+                master_page.draw(bake_master=True)
                 done += 1
 
                 assert all([pg.is_master for pg in self.masterpages.values()])
@@ -147,57 +159,69 @@ class Document:
         # make pages
         for page in self.pages:
             scribus.progressSet((done + 1) // total)
-            page.draw(tasks=tasks, events=events.get(page.page_date))
+            page.draw(tasks=tasks, events=events_by_date.get(page.page_date))
             done += 1
 
 
-def make_doc(routines_file=ROUTINES_FILE) -> Document:
+def make_doc(
+    start: date | None,
+    end: date | None,
+    routines_file=ROUTINES_FILE,
+    draw_master: bool = True,
+    main_draw: bool = True,
+    interactive: bool = True,
+) -> Document:
     # just do the thing for now
     logger.info("In make doc")
     tasks = load_routine_tasks(routines_file=routines_file)
-    first_page_date = date.today()
-    end = date(first_page_date.year, 12, 31)
-
+    first_page_date = date.today() if start is None else start
+    end = end if end is not None else date(first_page_date.year, 12, 31)
     cached_prompt = get_cache_val("dates_prompt")
     dates_prompt = (
         cached_prompt if cached_prompt is not MISSING else end.isoformat()
     )
 
-    logger.debug("Init dates prompt: %s", dates_prompt)
-    dates_prompt = scribus.valueDialog(
-        "date span/last date",
-        f'{first_page_date.strftime("%Y/%m/%d")}-{end.strftime("%Y/%m/%d")}',
-        dates_prompt,
-    )
+    if not interactive and (first_page_date is None or end is None):
+        raise TypeError(
+            f"make doc must have start and end if not interactive (fpd: {first_page_date}, start: {start}, end: {end})"
+        )
+    elif interactive:
+        print("doing interacting")
+        logger.debug("Init dates prompt: %s", dates_prompt)
+        dates_prompt = scribus.valueDialog(
+            "date span/last date",
+            f'{first_page_date.strftime("%Y/%m/%d")}-{end.strftime("%Y/%m/%d")}',
+            dates_prompt,
+        )
 
-    logger.debug("res from first prompt: %s", dates_prompt)
+        logger.debug("res from first prompt: %s", dates_prompt)
+        while dates_prompt:
+            logger.debug("in while dates prompt %s %s", dates_prompt, end)
+            if dates_prompt.count("-") % 2:
+                # multiple dates:
+                start_prompt, end_prompt = "/".join(
+                    dates_prompt.split("-")[: len(dates_prompt.split("-")) // 2]
+                ), "/".join(
+                    dates_prompt.split("-")[len(dates_prompt.split("-")) // 2 :]
+                )
+            try:
+                first_page_date = prompt_to_date(start_prompt, first_page_date)
+                end = prompt_to_date(end_prompt, first_page_date)
 
-    while dates_prompt:
-        logger.debug("in while dates prompt %s %s", dates_prompt, end)
-        if dates_prompt.count("-") % 2:
-            # multiple dates:
-            start_prompt, end_prompt = "/".join(
-                dates_prompt.split("-")[: len(dates_prompt.split("-")) // 2]
-            ), "/".join(
-                dates_prompt.split("-")[len(dates_prompt.split("-")) // 2 :]
-            )
-        try:
-            first_page_date = prompt_to_date(start_prompt, first_page_date)
-            end = prompt_to_date(end_prompt, first_page_date)
+            except ValueError:
+                logger.exception("ValueError in loop", level=WARNING)
+                dates_prompt = scribus.valueDialog(
+                    "End date", "yyyy[/.-]mm[/.-]dd".end.isoformat()
+                )
+            else:
+                break
 
-        except ValueError:
-            logger.exception("ValueError in loop", level=WARNING)
-            dates_prompt = scribus.valueDialog(
-                "End date", "yyyy[/.-]mm[/.-]dd".end.isoformat()
-            )
         else:
-            break
+            # end prompt is empty, clear cache
+            clear_cache_val("dates_prompt")
 
-    else:
-        # end prompt is empty, clear cache
-        clear_cache_val("dates_prompt")
-    if dates_prompt and dates_prompt != cached_prompt:
-        cache_val("dates_prompt", dates_prompt, overwrite=True)
+        if dates_prompt and dates_prompt != cached_prompt:
+            cache_val("dates_prompt", dates_prompt, overwrite=True)
     logger.info("doing dates %s - %s", first_page_date, end)
 
     logger.info("starting pages")
@@ -206,13 +230,13 @@ def make_doc(routines_file=ROUTINES_FILE) -> Document:
         A5FrontPage(page_number=1, page_date=first_page_date),
         A5MonthSpreadPage(
             page_number=2,
-            master_page="month-left",
+            master_page="month-left" if draw_master else None,
             side=PAGESIDE.LEFT,
             page_date=first_page_date.replace(day=1),
         ),
         A5MonthSpreadPage(
             page_number=3,
-            master_page="month-right",
+            master_page="month-right" if draw_master else None,
             side=PAGESIDE.RIGHT,
             page_date=first_page_date.replace(day=1),
         ),
@@ -234,7 +258,7 @@ def make_doc(routines_file=ROUTINES_FILE) -> Document:
                 + [
                     A5MonthSpreadPage(
                         page_number=len(pages) + page_add + 3,
-                        master_page=f"month-{side}",
+                        master_page=f"month-{side}" if draw_master else None,
                         side=side,
                         page_date=page_date.replace(day=1),
                     )
@@ -248,13 +272,13 @@ def make_doc(routines_file=ROUTINES_FILE) -> Document:
         pages += [
             A5WeekSpreadPage(
                 page_number=len(pages) + 1,
-                master_page="week-left",
+                master_page="week-left" if draw_master else None,
                 side=PAGESIDE.LEFT,
                 page_date=page_date,
             ),
             A5WeekSpreadPage(
                 page_number=len(pages) + 2,
-                master_page="week-right",
+                master_page="week-right" if draw_master else None,
                 side=PAGESIDE.RIGHT,
                 padding=5,
                 page_date=page_date,
@@ -273,9 +297,23 @@ def make_doc(routines_file=ROUTINES_FILE) -> Document:
         # Checkbox.clean()
 
 
-def entry_point(routines_file=ROUTINES_FILE, profile=PROFILE, debug=False):
-    logger.info("entered entry point")
-    with Debug("main", enabled=debug) as main_debug:
+def entry_point(
+    routines_file=ROUTINES_FILE,
+    profile=PROFILE,
+    log_level: int = WARNING,
+    visual_debug=False,
+    start: date | None = None,
+    interactive: bool = True,
+    end: date | None = None,
+    no_master_draw: bool = False,
+    no_main_draw: bool = False,
+    close: bool = True,
+    save_to: Path | None = None,
+    pdf_out: Path | None = None,
+):
+
+    RootLogger.setLevel(log_level)
+    with Debug("main", enabled=visual_debug) as main_debug:
         main_debug.set_break()
         if profile:
             profile_path = (
@@ -284,10 +322,36 @@ def entry_point(routines_file=ROUTINES_FILE, profile=PROFILE, debug=False):
                 .joinpath(".local", "tmp", "scribus_calendar.profile")
             )
             with cProfile.Profile() as profile:
-                make_doc(routines_file=routines_file)
+                make_doc(
+                    start,
+                    end,
+                    routines_file=routines_file,
+                    draw_master=not no_master_draw,
+                    main_draw=not no_main_draw,
+                    interactive=interactive,
+                )
                 profile.dump_stats(profile_path)
         else:
-            make_doc(routines_file=routines_file)
+            make_doc(
+                start,
+                end,
+                routines_file=routines_file,
+                draw_master=not no_master_draw,
+                main_draw=not no_main_draw,
+                interactive=interactive,
+            )
+        if save_to is not None:
+            scribus.saveDocAs(str(save_to))
+        if pdf_out is not None:
+            print(f"exporting pdf to {pdf_out}")
+            pdf = scribus.PDFfile()
+            pdf.thumbnails = True
+            pdf.file = str(pdf_out)
+            pdf.save()
+        else:
+            print("not exporting pdf")
+        if close:
+            scribus.closeDoc()
 
 
 if __name__ == "__main__":

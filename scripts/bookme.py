@@ -1,5 +1,5 @@
-from typing import NamedTuple
 from pathlib import Path
+from typing import NamedTuple
 
 
 def get_doc_page_sizes_and_margins():
@@ -72,31 +72,6 @@ def create_pages(
     )
     scribus.saveDocAs(dest)
     scribus.setDocType(scribus.NOFACINGPAGES, scribus.FIRSTPAGELEFT)
-    print("boop")
-    print(
-        spread_sources[::2],
-        spread_sources[1::2],
-        range(len(spread_sources) // 2),
-    )
-    print(f"rangeval: {len(spread_sources) // 2}")
-    print(
-        list(
-            (
-                list(range(1 + offset, 2 + (len(spread_sources) // 2))),
-                spread_sources[::2],
-                spread_sources[1::2],
-            )
-        )
-    )
-    print(
-        list(
-            zip(
-                range(1 + offset, 2 + (len(spread_sources) // 2)),
-                spread_sources[::2],
-                spread_sources[1::2],
-            )
-        )
-    )
     for new_page, left_source, right_source in zip(
         range(1 + offset, 2 + ((len(spread_sources)) // 2)),
         spread_sources[offset::2],
@@ -114,7 +89,7 @@ def create_pages(
     if front_cover:
         copy_items(CopySrc(source, 1), CopyDest(dest, 1))
         if scribus.getDocName() != dest:
-            print(f"Have to go to new doc")
+            print("Have to go to new doc")
             scribus.openDoc(dest)
         scribus.gotoPage(1)
         print(f"before set page size: {scribus.getPageSize()} to {source_size}")
@@ -130,7 +105,7 @@ def create_pages(
             CopyDest(dest, scribus.pageCount()),
         )
         if scribus.getDocName() != dest:
-            print(f"Have to go to new doc")
+            print("Have to go to new doc")
             scribus.openDoc(dest)
         scribus.gotoPage(scribus.pageCount())
         scribus.setCurrentPageSize(*source_size)

@@ -1,5 +1,4 @@
-from shutil import ExecError
-from typing import Any, LiteralString
+from typing import Any
 
 
 class NewDocError(Exception):
@@ -21,6 +20,37 @@ class NoObjects(Exception):
         super().__init__(f"No objects in doc {document} on page {page}")
 
 
+class SizeException(BaseException):
+    pass
+
+
+class TooSmall(SizeException):
+    DEFICIENCY: str = "small"
+
+    def __init__(
+        self, minimum: float, actual: float, object: str | None = None
+    ):
+        self.minimum: float = minimum
+        self.actual: float = actual
+        if object:
+            object_prefix = f"f{object} is "
+        else:
+            object_prefix = ""
+        return super().__init__(
+            f"{object_prefix}too {self.DEFICIENCY} at {actual} (needed {minimum})"
+        )
+
+
+class TooShort(TooSmall):
+    DEFICIENCY = "short"
+
+
+class DrawError(Exception):
+    """
+    Miscellaneous drawing error
+    """
+
+
 class WrongPageError(Exception):
     def __init__(
         self,
@@ -33,7 +63,7 @@ class WrongPageError(Exception):
         self.extra: dict[str, Any] = extra or {}
         if msg is None:
             msg = f"On wrong page ({actual}) expected to be on {expected}"
-        super.__init__(msg)
+        super().__init__(msg)
 
 
 class NoSuchMasterPage(Exception):

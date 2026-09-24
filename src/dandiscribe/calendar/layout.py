@@ -1,24 +1,23 @@
-from dataclasses import dataclass, field, InitVar, MISSING
-
 import datetime
-from logging import getLogger, INFO
-from pathlib import Path
-from typing import Optional, Collection
+from dataclasses import MISSING, InitVar, dataclass
+from logging import getLogger
 
+import scribus
+
+from dandiscribe import style
 from dandiscribe.enums import COLORS
 from dandiscribe.objects import Box, ColumnSection
-import dandiscribe.style as style
 
-from .data import Event, Task, TIME_OF_DAY
+from .data import TIME_OF_DAY, Event, Task
 
 logger = getLogger(__name__)
-logger.setLevel(INFO)
 
 
 @dataclass(kw_only=True)
 class WeekCalToDSection(ColumnSection):
 
     time_of_day: TIME_OF_DAY = MISSING
+    date: date = MISSING
 
     @classmethod
     def factory(
@@ -26,10 +25,12 @@ class WeekCalToDSection(ColumnSection):
         rows: int,
         sub_rows: int,
         time_of_day: TIME_OF_DAY,
-        tasks: Collection[Task] = field(default_factory=[]),
-        events: Collection[Event] = field(default_factory=[]),
+        here_date: date,
+        title: bool = True,
+        tasks: list[Task] | None = None,
+        events: list[Event] | None = None,
         check_boxes: bool = True,
-        background: Optional[COLORS] = None,
+        background: COLORS | None = None,
         remaining_spaces: int = 2,
         title_style: (
             style.TextStyle | style.ParagraphStyle
@@ -39,8 +40,11 @@ class WeekCalToDSection(ColumnSection):
             style.TextStyle | style.ParagraphStyle
         ) = style.WEEK_CAL_TASK_STYLE,
     ):
-        tasks = [task for task in tasks or [] if task in time_of_day]
-        logger.debug(f"post filter tasks ({time_of_day}): {tasks}")
+
+        logger.debug("tasks: %s", tasks)
+
+        tasks = [task for task in (tasks or []) if task in time_of_day]
+        logger.warning(f"post filter tasks ({time_of_day}): {tasks}")
         if len(tasks) > (rows * sub_rows - remaining_spaces):
             raise ValueError(f"Too many tasks {len(tasks)} for calendar day!")
         pre_fill = []
@@ -51,7 +55,7 @@ class WeekCalToDSection(ColumnSection):
                 pre_fill_text = task.title
                 try:
                     pre_fill_text = f'{task.routine_time.time_of_day.strftime("%H:%M")}: {pre_fill_text}'
-                except AttributeError as exc:
+                except AttributeError:
                     # this is okay, we're assuming this is a TIME OF DAY
                     pass
                 pre_fill[-1].append(pre_fill_text)
@@ -69,10 +73,13 @@ class WeekCalToDSection(ColumnSection):
         ]
         return cls(
             time_of_day=time_of_day,
+            date=here_date,
             boxes=boxes,
             background=background,
-            title=time_of_day.name.split()[0].title(),
+            title=time_of_day.name.split()[0].title() if title else None,
+            title_height=16 / scribus.pt,
             title_style=title_style,
+            title_in_master=True,
             title_line_style=title_line_style,
         )
 
@@ -110,5 +117,6 @@ class MonthDay(ColumnSection):
             past_month_color=past_month_color,
             title_style=style.MONTH_DATE_PSTYLE,
             title_in_master=False,
+            title_height=12 / scribus.pt,
             **kwargs,
         )

@@ -1,18 +1,20 @@
 from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import lru_cache
-from turtle import heading
-from typing import Any, Literal, NamedTuple, Self, override
+from typing import Literal, NamedTuple, Self, override
 
-from dandy_lib.datatypes.tuples import MixableNamedTuple
 import scribus
-
 from dandy_lib.datatypes.numeric import NonNegNum
+from dandy_lib.datatypes.tuples import MixableNamedTuple
 from dandy_lib.datatypes.twodee import (
-    Coord,
-    Rect as _Rect,
-    Size as _Size,
     ZERO_COORD,
+    Coord,
+)
+from dandy_lib.datatypes.twodee import (
+    Rect as _Rect,
+)
+from dandy_lib.datatypes.twodee import (
+    Size as _Size,
 )
 
 from dandiscribe.enums import HAlign, Unit, VAlign
@@ -84,34 +86,55 @@ class Size(MixableNamedTuple, _Size):
 assert len(list(Size(1, 3))) == 2
 
 
+class _NotSet(float):
+    def __new__(cls, value=-float("inf")):
+        if value > -float("inf"):
+            raise ValueError("what you doing with not set?")
+        return super().__new__(cls, -float("inf"))
+
+
+NOT_SET = _NotSet()
+
+
 class Margins(NamedTuple):
-    top: float
-    right: float
-    bottom: float
-    left: float
+    left: float = NOT_SET
+    right: float = NOT_SET
+    top: float = NOT_SET
+    bottom: float = NOT_SET
+    facing: bool = False
+
+    @property
+    def inside(self) -> float:
+        if not self.facing:
+            raise TypeError("Non-facing margins do not have inside or outside")
+        return self.left
+
+    @property
+    def outside(self) -> float:
+        if not self.facing:
+            raise TypeError("Non-facing margins do not have inside our outside")
+        return self.right
 
     @lru_cache
     def as_tuple(self) -> tuple[float, float, float, float]:
         return tuple[float, float, float, float](self)
 
     @property
-    @lru_cache
     def horizontal(self) -> float:
         return self.right + self.left
 
     @property
-    @lru_cache
     def vertical(self) -> float:
         return self.top + self.bottom
 
-    def with_top(self, top_val: int):
+    def with_top(self, top_val: float) -> Self:
         return self.__class__(top_val, self.right, self.bottom, self.left)
 
-    def with_right(self, right_val: int):
+    def with_right(self, right_val: float) -> Self:
         return self.__class__(self.top, right_val, self.bottom, self.left)
 
-    def with_bottom(self, bottom_val: int):
+    def with_bottom(self, bottom_val: float) -> Self:
         return self.__class__(self.top, self.right, bottom_val, self.left)
 
-    def with_left(self, left_val: int):
+    def with_left(self, left_val: float) -> Self:
         return self.__class__(self.top, self.right, self.bottom, left_val)

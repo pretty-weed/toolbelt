@@ -7,7 +7,7 @@ from datetime import date as Date
 from datetime import datetime, time, timedelta
 from enum import Enum, EnumMeta, IntEnum
 from functools import cache
-from logging import INFO, getLogger
+from logging import DEBUG, getLogger
 from os import getenv
 from pathlib import Path
 from typing import Any, NamedTuple, Self, TypeAlias, cast
@@ -21,7 +21,6 @@ CONF_FILE = Path(
     getenv("CONF_FILE", Path().home().joinpath(".private", "calendars.yaml"))
 )
 logger = getLogger(__name__)
-logger.setLevel(INFO)
 
 
 class CalEvent(NamedTuple):
@@ -160,10 +159,18 @@ class Duration(NamedTuple):
                 return False
 
     def cmp(self, other: Self) -> CMP_VALUE:
+        try:
+            other = other.value
+        except AttributeError:
+            pass
         if self.absolute != other.absolute:
             raise Incomaprable(self, other)
         if self == other:
             return CMP_VALUE.EQUAL
+        if self.start <= other.start and self.end >= other.end:
+            return CMP_VALUE.SUPERSET
+        if self.start >= other.start and self.end <= other.end:
+            return CMP_VALUE.SUBSET
         if self.end < other.start:
             return CMP_VALUE.LT
 
@@ -185,17 +192,12 @@ class Duration(NamedTuple):
         try:
             other: time | datetime = other.value  # type: ignore[override]
         except AttributeError:
-            print(
-                f"No attribute value on other: {other} ({other!r}), keeping value"
-            )
-
-        print(f"other is {other}")
+            pass
 
         try:
             # Deal with other as routinetime
             other_tod = other.time_of_day
         except AttributeError:
-            print(f"except AttributeError for other.time_of day {other}")
             # deal with other as either duration, time of day, datetime, or time
             try:
                 # deal with other as duration or time of day
@@ -207,7 +209,6 @@ class Duration(NamedTuple):
                 other_start = other_end = other
 
         else:
-            print("else for other.value")
             other_start = other_tod.start
             other_end = other_tod.end
 
@@ -223,39 +224,39 @@ class Duration(NamedTuple):
         except AttributeError:
             assert isinstance(other_end, time)
 
-        logger.debug(
-            "DURATION attempting w/ other_start and other_end: %s, %s self: %s",
-            other_start,
-            other_end,
-            self,
-        )
         return self.start <= other_start and other_end <= self.end
 
     def __and__(self, other: Self) -> Duration:
-        print(f"self & other: {self} & {other}")
+
         early, late = sorted([self, other], key=lambda x: x.start)
-        if early.end < late.start:
+        # Dummy date
+        dd = datetime.today()
+        if early.end < late.start and (
+            datetime.combine(dd, late.start) - datetime.combine(dd, early.end)
+            <= datetime.timedelta(seconds=60)
+        ):
             raise ValueError(f"NO NO NO {early} & {late} ({self} & {other})")
             return
 
+        elif early.end < late.start:
+            # within a minute
+            early = Duraation(
+                early.start,
+                datetime.combine(Date.today(), early.end)
+                + timedelta(seconds=60),
+            )
+
         res = Duration(max(early.start, late.start), min(early.end, late.end))
 
-        print(f"{self} & {other} = {res}")
         return res
 
     def __or__(self, other) -> Duration | None:
         early, late = sorted([self, other], key=lambda x: x.start)
-        print(f"self | other: {self} | {other}")
         if early.end < late.start:
-            print(
-                f"early, late: {early}, {late}; self | other: {self}, {other}"
-            )
             # disjoint
             return None
 
         res = Duration(min(early.start, late.start), max(early.end, late.end))
-
-        print(f"{self} | {other} = {res}")
 
         return res
 
@@ -265,18 +266,19 @@ class Duration(NamedTuple):
             minutes=self.end.minute - self.start.minute,
         )
 
+    minute = timedelta(seconds=60)
+
     @classmethod
     def create(
         cls,
-        start_hour: int,
-        end_hour: int,
-        start_minute: int = 0,
-        end_minute: int = 0,
+        start_time: time,
+        end_time: time,
     ):
-        return cls(
-            time(start_hour, start_minute),
-            time(end_hour, end_minute),
-        )
+        if end_time == time.min:
+            end_time = (
+                datetime.combine(Date.today(), end_time) - cls.minute
+            ).time()
+        return cls(start_time, end_time)
 
 
 @dataclass
@@ -343,23 +345,40 @@ def get_events_by_date(
 
 
 class TIME_OF_DAY(Enum):
-    OVERNIGHT_MORNING = Duration.create(start_hour=0, end_hour=5)
-    EARLY_MORNING = Duration.create(start_hour=5, end_hour=8)
-    MIDMORNING = Duration.create(start_hour=5, end_hour=12)
-    MORNING = Duration.create(start_hour=0, end_hour=12)
+    OVERNIGHT_MORNING = Duration.create(
+        start_time=time(hour=0), end_time=time(hour=5)
+    )
+    EARLY_MORNING = Duration.create(
+        start_time=time(hour=5), end_time=time(hour=8)
+    )
+    MIDMORNING = Duration.create(
+        start_time=time(hour=5), end_time=time(hour=12)
+    )
+    MORNING = Duration.create(start_time=time(hour=0), end_time=time(hour=12))
     LATE_MORNING = Duration.create(
-        start_hour=10, start_minute=30, end_hour=11, end_minute=30
+        start_time=time(hour=10, minute=30),
+        end_time=time(hour=11, minute=30),
     )
     NOON = Duration.create(
-        start_hour=11, start_minute=30, end_hour=12, end_minute=30
+        start_time=time(hour=11, minute=30), end_time=time(hour=12, minute=30)
     )
-    EARLY_AFTERNOON = Duration.create(start_hour=12, end_hour=2, end_minute=30)
-    AFTERNOON = Duration.create(start_hour=12, end_hour=17)
-    LATE_AFTERNOON = Duration.create(start_hour=16, end_hour=17)
-    EARLY_EVENING = Duration.create(start_hour=17, end_hour=18)
-    EVENING = Duration.create(start_hour=17, end_hour=20)
-    LATE_EVENING = Duration.create(start_hour=19, end_hour=20)
-    NIGHT = Duration.create(start_hour=20, end_hour=0)
+    EARLY_AFTERNOON = Duration.create(
+        start_time=time(hour=12), end_time=time(hour=2, minute=30)
+    )
+    AFTERNOON = Duration.create(
+        start_time=time(hour=12), end_time=time(hour=17)
+    )
+    LATE_AFTERNOON = Duration.create(
+        start_time=time(hour=16), end_time=time(hour=17)
+    )
+    EARLY_EVENING = Duration.create(
+        start_time=time(hour=17), end_time=time(hour=18)
+    )
+    EVENING = Duration.create(start_time=time(hour=17), end_time=time(hour=20))
+    LATE_EVENING = Duration.create(
+        start_time=time(hour=19), end_time=time(hour=20)
+    )
+    NIGHT = Duration.create(start_time=time(hour=20), end_time=(time.min))
     EVENING_AND_NIGHT = EVENING | NIGHT
     ALL_DAY = ((MORNING | AFTERNOON) | EVENING) | NIGHT
 
@@ -368,61 +387,105 @@ class TIME_OF_DAY(Enum):
         return self.value.start
 
     @property
+    def absolute(self) -> bool:
+        return self.value.absolute
+
+    @property
     def end(self):
         return self.value.end
 
-    def __contains__(self, other: datetime | time | Duration) -> bool:
+    def __and__(self, other):
+        return self.value.__and__(other)
 
+    def __or__(self, other):
+        return self.value.__or__(other)
+
+    def __contains__(self, other: datetime | time | Duration | Task) -> bool:
         # If this is a task, get duration from task
-        try:
-            other = other.routine_time
-        except AttributeError:
-            pass
-        try:
-            other = other.time_of_day
-        except AttributeError:
-            pass
-
-        else:
-            return other in self.value
-        try:
-            return self.start <= other.start and self.end <= other.end
-        except AttributeError:
-            logger.exception(
-                "TIME_OF_DAY this no work: self(%s).start <= other(%s).start and self.end <= other.end",
-                self,
-                other,
-            )
-
-            # either datetime or time
-            try:
-                # if it's datetime, make it a time
-                other = other.time()
-            except AttributeError:
-                pass
-            try:
-                res: bool = self.start <= other <= self.end
-            except TypeError:
-                try:
-                    return self.start <= other.start and other.end <= self.end
-                except TypeError as exc:
-                    logger.exception(
-                        "TIME_OF_DAY failed: self.start(%s) <= other(%s).start and self.end(%s) <= other.end(%s)",
-                        self.start,
-                        other,
-                        self.end,
-                        other,
+        logger.setLevel(DEBUG)
+        match other:
+            case datetime():
+                if not self.absolute:
+                    return self.start <= other.time() <= self.end
+                return self.start <= other <= self.end
+            case time():
+                if self.absolute:
+                    return any(
+                        [
+                            (
+                                self.start
+                                <= datetime.combine(
+                                    self.start.date() + timedelta(days=n), other
+                                )
+                                <= self.end
+                            )
+                            for n in range((self.end - self.start).days + 1)
+                        ]
                     )
-                    raise TypeError("Not comparable") from exc
-            else:
-                logger.debug(
-                    "TIME_OF_DAY this worked: self.start(%s) <= other(%s) and self.end(%s) <= ",
-                    self.start,
-                    other,
-                    self.end,
+                return self.start <= other <= self.end
+            case Duration():
+                return self.value.cmp(other) in [
+                    CMP_VALUE.EQUAL,
+                    CMP_VALUE.SUPERSET,
+                ]
+            case RoutineTime():
+                if other.time_of_day is None:
+                    return False
+                return other.time_of_day in self
+            case Task():
+                if other.routine_time is not None:
+                    if other.routine_time.time_of_day is None:
+                        # TODO: should this be true?
+                        return False
+                    res = self.value.cmp(
+                        other.routine_time.as_daily_duration()
+                    ) in [CMP_VALUE.EQUAL, CMP_VALUE.SUPERSET]
+                    return res
+                # routine time is none, depend on the due time
+                elif other.lead_time is not None:
+                    # Toremove: fix this or make it
+                    assert other.due is not None
+                    if self.absolute:
+                        match other.due:
+                            case Date():
+                                due = datetime.combine(other.due, time.max)
+
+                            case datetime():
+                                due = other.due
+                            case _:
+                                raise TypeError("Gone Wrong")
+
+                    else:
+                        match other.due:
+                            case Date():
+                                due = other.due
+                            case datetime():
+                                due = other.date()
+                            case _:
+                                raise TypeError("Dun Gone Wroong")
+
+                    res = Duration(due - other.lead_time, due) in self.value
+                    logger.debug(
+                        "%s is %s in %s"
+                        % (other, "not" if not res else "", self)
+                    )
+                    return res
+                else:
+                    # lead time is noen, as is routine time, just get the due time
+                    res = Duration(start=other.due, end=other.due) in self.value
+                    logger.debug(
+                        "%s is %s in %s", other, "not" if not res else "", self
+                    )
+                    return res
+            case _:
+                raise TypeError(
+                    f"Should not pass {other} of type {type(other)} to `in TIME_OF_DAY`"
                 )
-                return res
-        logger.info("TIME_OF_DAY fallback false (%s in %s)", other, self)
+
+        logger.error("TIME_OF_DAY fallback false (%s in %s)", other, self)
+        raise TypeError(
+            f"just nope: \nself:{self} ({type(self)})\n{other} ({type(other)})"
+        )
         return False
 
     def match(
@@ -431,9 +494,6 @@ class TIME_OF_DAY(Enum):
         duration: timedelta | int | None = None,
     ) -> bool:
 
-        logger.debug(
-            "checking match %s inside of %s of %s", self, duration, time
-        )
         try:
             # this will work for datetime
             time = time.time()
@@ -462,6 +522,17 @@ class RoutineTime(NamedTuple):
     weeks: frozenset[int] | None = None
     start: Date | None = None
     end: Date | None = None
+
+    def as_daily_duration(self) -> Duration:
+        match self.time_of_day:
+            case None:
+                return Duration(time.min, time.max)
+            case TIME_OF_DAY():
+                return self.time_of_day.value
+            case time():
+                return Duration(self.time_of_day, self.time_of_day)
+            case _:
+                raise TypeError("This should never happen")
 
     @classmethod
     def load(cls, in_dict):
@@ -563,27 +634,39 @@ class Task(Container):
     description: str | None = None
     due: Date | datetime | None = None
     routine_time: RoutineTime | None = None
+    lead_time: timedelta | None = None
 
     @property
     def start_date(self) -> Date | None:
-        if self.routine_time is not None:
-            return self.routine_time.start
-
-        # Assumes self.due is set, per __post_init__
-        try:
-            return cast(datetime, self.due).date()
-        except AttributeError:
-            return cast(Date, self.due)
+        return self.start.date()
 
     @property
-    def end_date(self) -> Date | None:
+    def start(self) -> datetime:
+        start = None
         if self.routine_time is not None:
-            return self.routine_time.end
+            start = self.routine_time.start
+        if start is not None:
+            return datetime.combine(start, time.min)
+        return datetime.min
 
-        try:
-            return cast(datetime, self.due).date()
-        except AttributeError:
-            return cast(Date, self.due)
+        # Assumes self.due is set, per __post_init__
+
+    @property
+    def end_date(self) -> Date:
+        return self.end.date()
+
+    @property
+    def end(self) -> datetime:
+        end = self.due
+        match end:
+            case None:
+                return self.routine_time.end
+            case datetime():
+                return end
+            case Date():
+                return datetime.combine(end, time.min)
+            case _:
+                raise ValueError("Dunno how to get end")
 
     def __post_init__(self):
         if self.due is None and self.routine_time is None:
@@ -669,7 +752,6 @@ def tasks_by_routine_day_and_time(
     sorted_tasks: dict[int, dict[TIME_OF_DAY, list[Task]]] = {}
     if valid_times is None:
         valid_times = list(TIME_OF_DAY)
-
     # get most specific time first
     sorted(valid_times, key=lambda x: x.value.duration())
     for task in tasks:
@@ -716,11 +798,12 @@ def get_tasks(
             task.end_date is not None and task.end_date < date
         ):
             continue
-        if all(
-            task.routine_time is not None,
-            task.routine_time.weekdays is not None,
-            date.weekday() in cast(frozenset[int], task.routine_time.weekdays)
-            and ((time_of_day is None) or (task in time_of_day)),
+        if (
+            task.routine_time is not None
+            and task.routine_time.weekdays is not None
+            and date.weekday()
+            in cast(frozenset[int], task.routine_time.weekdays)
+            and ((time_of_day is None) or (task in time_of_day))
         ):
             yield task
 

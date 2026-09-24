@@ -5,25 +5,11 @@ from dandiscribe.enums import (
     InsertPaddingPages as InsertPaddingPages,
     PaperSize as PaperSize,
     Unit as Unit,
-    UnitType as UnitType,
 )
 from dandiscribe.log import configure as configure
-from dandiscribe.zine.layout import (
-    FinalDoc as FinalDoc,
-    HALF_DOC as HALF_DOC,
-    Layout as Layout,
-    LayoutVal as LayoutVal,
-    QUARTER_DOC as QUARTER_DOC,
-)
-from dandy_lib.cli.parser import (
-    add_output_force_overwrite_to_parser as add_output_force_overwrite_to_parser,
-)
-from enum import Enum as Enum
+from dandiscribe.zine.layout import FinalDoc as FinalDoc, Layout as Layout
 from importlib.resources.abc import Traversable
-from numpy import test as test
 from pathlib import Path
-from re import U as U
-from scribus import inch as inch
 from typing import NamedTuple
 
 TEST_SOURCE_8: Incomplete

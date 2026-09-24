@@ -3,12 +3,16 @@ from collections.abc import Callable, Collection
 from copy import copy
 from dataclasses import MISSING, dataclass, field
 from functools import partial
+from importlib.resources import as_file, files
+from importlib.resources.abc import Traversable
+from typing import override
 
 import scribus
+from dandy_lib.calendars import moooooooooon
 from dandy_lib.datatypes.twodee import Size
 
 from dandiscribe import style
-from dandiscribe.calendar.data import TIME_OF_DAY, Task
+from dandiscribe.calendar.data import TIME_OF_DAY, Task, get_events_by_date
 from dandiscribe.enums import COLORS, PAGESIDE, FontFaces
 from dandiscribe.layout import Page, SpreadPage
 from dandiscribe.objects import Box, Column, ColumnSection
@@ -56,6 +60,7 @@ class NotesSpread(SpreadPage, CalendarPage):
         default_factory=lambda: {0.5: copy(style.FILLERS)}
     )
 
+    @override
     def draw(
         self,
         bake_master: bool = False,
@@ -107,16 +112,30 @@ class MonthSpreadPage(CalendarPage, SpreadPage):
         self,
         bake_master: bool = False,
         tasks: list[Task] | None = None,
-        events: dict[datetime.datetime, Event] | None = None,
+        events: list[Event] | None = None,
     ):
 
+        by_date = get_events_by_date(
+            events,
+            self.page_date,
+            self.page_date.replace(
+                month=(self.page_date.month % 12) + 1,
+                day=1,
+                year=self.page_date.year
+                + (1 if self.page_date.month == 12 else 0),
+            )
+            - datetime.timedelta(days=1),
+        )
         # Only display tasks that don't happen every week
         # bit of an editorial descision whatevs
-        tasks = [
-            task
-            for task in tasks
-            if (not task.routine_time or not task.routine_time.weeks)
-        ]
+        if tasks is None:
+            tasks = []
+        else:
+            tasks = [
+                task
+                for task in tasks
+                if (not task.routine_time or not task.routine_time.weeks)
+            ]
         if events is None:
             events = {}
         super().draw(bake_master=bake_master)
@@ -145,17 +164,12 @@ class MonthSpreadPage(CalendarPage, SpreadPage):
 
             cal_cols = {
                 day: Column(
+                    title=day_name,
+                    title_in_master=True,
+                    title_style=style.MONTH_CAL_DAY_HDR_STYLE,
+                    title_height=16 / scribus.pt,
+                    title_line_style=style.LineStyle(2),
                     sections=[
-                        ColumnSection(
-                            title=day_name,
-                            title_in_master=True,
-                            title_style=style.MONTH_CAL_DAY_HDR_STYLE,
-                            title_line_style=style.LineStyle(2),
-                            title_min_y=16,
-                        )
-                    ]
-                    + []
-                    + [
                         MonthDay.create(
                             day=day,
                             week=week,
@@ -171,7 +185,7 @@ class MonthSpreadPage(CalendarPage, SpreadPage):
                                     remove_routine=True,
                                 )
                             ),
-                            events=events.get(
+                            events=by_date.get(
                                 first_date
                                 + datetime.timedelta(days=day, weeks=week),
                                 [],
@@ -224,7 +238,7 @@ class MonthSpreadPage(CalendarPage, SpreadPage):
 
 def _getdate(in_dt_or_date: datetime.datetime | datetime.date) -> datetime.date:
     try:
-        return in_dt_or_date.date
+        return in_dt_or_date.date()
     except AttributeError:
         return in_dt_or_date
 
@@ -232,6 +246,10 @@ def _getdate(in_dt_or_date: datetime.datetime | datetime.date) -> datetime.date:
 @dataclass(kw_only=True)
 class WeekSpreadPage(CalendarPage, SpreadPage):
     def __post_init__(self):
+        if self.side is PAGESIDE.EITHER or (
+            self.side not in [PAGESIDE.LEFT, PAGESIDE.RIGHT]
+        ):
+            raise ValueError("Must specify calendar page side")
         if self.page_date.weekday():
             raise ValueError(
                 f"{self.page_date} is not a Monday ({self.page_date.weekday()})"
@@ -242,6 +260,7 @@ class WeekSpreadPage(CalendarPage, SpreadPage):
         sections=[
             ColumnSection(
                 title="Priorities",
+                title_height=0.5 / scribus.inch,
                 boxes=[Box(rows=2, sub_rows=2)],
                 title_in_master=True,
                 title_style=style.GUTTER_HEADER_STYLE,
@@ -249,6 +268,7 @@ class WeekSpreadPage(CalendarPage, SpreadPage):
             ColumnSection(
                 title="To Do",
                 title_style=style.GUTTER_HEADER_STYLE,
+                title_height=0.5 / scribus.inch,
                 boxes=[
                     Box(
                         rows=2,
@@ -262,24 +282,12 @@ class WeekSpreadPage(CalendarPage, SpreadPage):
             ColumnSection(
                 title="Notes",
                 height_rows=6,
+                title_height=0.5 / scribus.inch,
                 title_in_master=True,
                 title_style=style.GUTTER_HEADER_STYLE,
             ),
         ]
     )
-
-    @classmethod
-    def new(
-        cls,
-        page_number: int,
-        master_page: str,
-        side: PAGESIDE,
-        page_date: datetime.date,
-    ) -> Self:
-        return cls(
-            page=page_number,
-            page_date=page_date,
-        )
 
     def draw(
         self,
@@ -291,7 +299,9 @@ class WeekSpreadPage(CalendarPage, SpreadPage):
         if events is None:
             events = []
 
-        margins, usable_size = self.get_margins_and_usable_size()
+        margins, usable_size = self.get_margins_and_usable_size(
+            check_margins=True
+        )
         usable_width, usable_height = usable_size
         tasks_by_day_and_time: dict[int, dict[TIME_OF_DAY, list[Task]]] = {}
         if tasks is not None:
@@ -311,7 +321,6 @@ class WeekSpreadPage(CalendarPage, SpreadPage):
             col_width = usable_width // 4 - self.padding
 
             x = margins.left
-
             if self.side is PAGESIDE.LEFT:
                 # left side gutter
                 self._GUTTER.draw(
@@ -369,28 +378,46 @@ class WeekSpreadPage(CalendarPage, SpreadPage):
                 x += col_width + self.padding
             else:
                 day_offsets = range(3, 7)
+            moon_phases = moooooooooon.get_lunar_calendar(
+                datetime.datetime.combine(self.page_date, datetime.time.min),
+                datetime.datetime.combine(self.page_date, datetime.time.min)
+                + datetime.timedelta(days=6),
+            )
+            phase_days = dict((pd.time.date(), pd) for pd in moon_phases)
 
             # Start creating the columns
             for day_offset in day_offsets:
                 col_date = self.page_date + datetime.timedelta(days=day_offset)
+                moon_phase = phase_days.get(col_date)
+                if moon_phase is not None:
+                    badge_source: Traversable = files(
+                        "dandiscribe.icons.128"
+                    ).joinpath(f"emoji_u{ord(moon_phase.phase.icon()):x}.png")
+                    with as_file(badge_source) as resolved_path:
+                        badge_path = str(resolved_path.resolve())
+                else:
+                    badge_path = None
+
                 col = Column(
+                    badge_path=badge_path,
+                    title=col_date.strftime(f"%A.{col_date.day}"),
+                    title_style=style.WEEK_CAL_DAY_HDR_STYLE,
+                    title_height=0.75 / scribus.inch,
+                    title_in_master=False,
+                    title_line_style=style.LineStyle(2),
                     sections=[
-                        ColumnSection(
-                            title=col_date.strftime(f"%A.{col_date.day}"),
-                            title_style=style.WEEK_CAL_DAY_HDR_STYLE,
-                            title_in_master=False,
-                            title_line_style=style.LineStyle(2),
-                        )
-                    ]
-                    + [
                         WeekCalToDSection.factory(
                             time_of_day=time_of_day,
+                            here_date=col_date,
                             tasks=tasks_by_day_and_time.get(
                                 col_date.weekday(), dict()
-                            ).get(time_of_day, set()),
+                            ).get(time_of_day, []),
                             events=[
                                 evt
-                                for evt in events
+                                for evt_s, evt_e, evt in [
+                                    (_getdate(ev.start), _getdate(ev.end), ev)
+                                    for ev in events
+                                ]
                                 if _getdate(evt.start)
                                 <= col_date
                                 <= _getdate(evt.end)
@@ -415,6 +442,7 @@ class WeekSpreadPage(CalendarPage, SpreadPage):
                                 if day_offset < 5
                                 else ("Notes…" if day_offset == 5 else "\t")
                             ),
+                            title_height=16 / scribus.pt,
                             title_style=style.WEEK_CAL_READINGS_STYLE,
                             boxes=[
                                 Box(
@@ -432,12 +460,12 @@ class WeekSpreadPage(CalendarPage, SpreadPage):
                                 )
                             ],
                         )
-                    ]
+                    ],
                 )
 
                 col.draw(
                     x,
-                    margins.top + 20,
+                    margins.top,
                     col_width,
                     col_height - 1,
                     master=self.is_master,
@@ -446,11 +474,21 @@ class WeekSpreadPage(CalendarPage, SpreadPage):
                 col_date += datetime.timedelta(days=1)
 
 
-A5WeekSpreadPage = partial(WeekSpreadPage, size=Size(*scribus.PAPER_A5))
-A5MonthSpreadPage = partial(MonthSpreadPage, size=Size(*scribus.PAPER_A5))
+A5WeekSpreadPage = partial(
+    WeekSpreadPage,
+    inside_margin=1.5 / scribus.inch,
+    size=Size(*scribus.PAPER_A5),
+)
+A5MonthSpreadPage = partial(
+    MonthSpreadPage,
+    inside_margin=1.5 / scribus.inch,
+    size=Size(*scribus.PAPER_A5),
+)
 
 A5FrontPage = partial(CalendarPage, size=Size(*scribus.PAPER_A5))
-A5NotesPage = partial(NotesSpread, size=Size(*scribus.PAPER_A5))
+A5NotesPage = partial(
+    NotesSpread, inside_margin=1.5 / scribus.inch, size=Size(*scribus.PAPER_A5)
+)
 
 
 def gen_notes_spread_pages(

@@ -1,25 +1,134 @@
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from logging import getLogger
-from typing import Any, Callable, ClassVar, NamedTuple
+from typing import ClassVar, cast
 
 import scribus
-
 from dandy_lib.datatypes.twodee import Size
 
 from dandiscribe.data import Align
-from dandiscribe.enums import FILL, HAlign, VAlign
+from dandiscribe.enums import FILL, HAlignSimple, VAlign, VAlignSimple
+from dandiscribe.exceptions import DrawError, TooShort
 from dandiscribe.style import LineStyle, ParagraphStyle, TextStyle
 from dandiscribe.util import (
-    get_justify_adjustments,
-    ok_to_ignore_dialog,
     TempGoTo,
+    get_justify_adjustments,
 )
 
 logger = getLogger(__name__)
 
 
+class _Drawable:
+    def draw(self, x: int, y: int, width: int, height: int, master: bool):
+        assert all(n >= 0 for n in [x, y, width, height])
+        _ = master
+
+    def _keep_drawing(
+        self, x: int, y: int, width: int, height: int, master: bool
+    ) -> bool:
+        _ = x = y = width = height
+        _ = master
+        return False
+
+
+class Drawable(_Drawable):
+    def _keep_drawing(
+        self, x: int, y: int, width: int, height: int, master: bool, **kwargs
+    ) -> bool:
+        try:
+            super().draw(x=x, y=y, width=width, height=height, master=master)
+        except TypeError as exc:
+            raise TypeError("Unexpected vars") from exc
+        except AttributeError as exc:
+            logger.exception("Error drawing [%s]: %s", self, exc)
+            raise AttributeError(f"Error drawing {self}") from exc
+        else:
+            return True
+
+
 @dataclass
-class Box:
+class HasBadge(Drawable):
+
+    badge_path: str | None = None
+    badge_halign: HAlignSimple = HAlignSimple.RIGHT
+    badge_valign: VAlignSimple = VAlignSimple.TOP
+    badge_pad: float = 0.0625 / scribus.inch
+    badge_in_master: bool = False
+    badge_size: float = 0.125 / scribus.inch
+
+    def draw(
+        self, x: int, y: int, width: int, height: int, master: bool, **kwargs
+    ):
+        self.draw_badge(x, y, width, height, master)
+        self._keep_drawing(x, y, width, height, master, **kwargs)
+
+    def draw_badge(self, x: int, y: int, width: int, height: int, master: bool):
+        if self.badge_path and master == self.badge_in_master:
+            badge_x = width - self.badge_pad - self.badge_size
+
+            badge_frame = scribus.createImage(
+                badge_x, y + self.badge_pad, self.badge_size, self.badge_size
+            )
+
+            scribus.loadImage(self.badge_path, badge_frame)
+            scribus.setScaleImageToFrame(True, True, badge_frame)
+            scribus.setFillColor("None", badge_frame)
+            scribus.setLineColor("None", badge_frame)
+
+
+@dataclass
+class HasTitle(Drawable):
+    title: str | None = None
+    title_style: TextStyle | ParagraphStyle | None = None
+    title_min_y: int = 0
+    title_height: int | None = None
+    title_line_style: LineStyle | None = None
+    title_in_master: bool = True
+
+    def __post_init__(self, *args, **kwargs):
+        logger.debug("HasTitle PostInit: args: %s; kwargs; %s", args, kwargs)
+        if self.title is not None:
+            if self.title_height is None:
+                raise ValueError("title height must not be none if has a title")
+            if self.title_height < self.title_min_y:
+                raise TooShort(self.title_min_y, self.title_height)
+
+    def draw_title(
+        self, x: int, y: int, width: int, height: int, master: bool
+    ) -> tuple[str, list[str]] | None:
+        if master == self.title_in_master and self.title is not None:
+            objects = []
+            if self.title_height is not None:
+                if self.title_height > height:
+                    raise TooShort(self.title_height, height, self)
+            elif height < self.title_min_y:
+                logger.exception(
+                    f"{height} too short for {self.title} (need {self.title_min_y})"
+                )
+                raise TooShort(self.title_min_y, height, self)
+            print(
+                "Creating title box[%s]: x: %d, y: %d, %d x %d"
+                % (self.title, x, y, width, height)
+            )
+            title_box = scribus.createText(x, y, width, self.title_height)
+
+            scribus.setText(self.title, title_box)
+            if self.title_style is not None:
+                self.title_style.apply(title_box)
+            scribus.setTextVerticalAlignment(scribus.ALIGNV_BOTTOM, title_box)
+
+            if self.title_line_style is not None:
+                title_line = scribus.createLine(
+                    x, y + height, x + width, y + height
+                )
+                self.title_line_style.apply(title_line)
+                objects.append(title_line)
+
+            return title_box, objects
+
+
+@dataclass
+class Box(Drawable):
     rows: int = 1
     sub_rows: int = 1
     row_style: LineStyle = LineStyle(weight=0.75, style=1)
@@ -48,6 +157,7 @@ class Box:
         prefill_from_bottom: bool = False,
         pre_fill_max_lines: int | None = None,
     ):
+
         if pre_fill_max_lines is None:
             pre_fill_max_lines = self.pre_fill_max_lines
         draw_master = master is None or bool(master)
@@ -132,10 +242,10 @@ class Box:
                 if not draw_master and row_prefill is not None:
                     if prefill_from_bottom:
                         prefill_idx = self.sub_rows - sub_row - 1
+
                     else:
                         prefill_idx = sub_row
                     if prefill_idx < len(row_prefill):
-
                         # pre-fill if necessary
                         # last -10 is pretty arbirary
                         objects.append(
@@ -283,18 +393,13 @@ def draw_checkbox(x: int, y: int, size: Size, style: LineStyle) -> str:
 
 
 @dataclass
-class ColumnSection:
-    title: str = None
+class ColumnSection(HasBadge, HasTitle):
     fill: FILL = FILL.CLEAR
     background: str | None = None
     boxes: list[Box] = field(default_factory=list)
     # extra "rows" for calculating section height
     height_rows: int = 0
-    title_in_master: bool = True
     box_align: Align = field(default_factory=Align)
-    title_style: TextStyle | ParagraphStyle = None
-    title_min_y: int = 0
-    title_line_style: LineStyle | None = None
 
     @property
     def rows(self):
@@ -322,11 +427,23 @@ class ColumnSection:
             scribus.setFillColor(self.background, bg_box)
             objects.append(bg_box)
         # TODO fill
-        rows = self.rows
-        row_height = height // rows
 
-        if self.title and row_height < self.title_min_y:
-            row_height = (height - (self.title_min_y - row_height)) // rows
+        rows = self.rows + int(bool(self.title))
+        row_height = height // rows
+        box_y = y
+
+        if self.title:
+            try:
+                self.draw_title(x, y, width, height=row_height, master=master)
+            except TooShort as exc:
+                self.draw_title(
+                    x, y, width, height=int(exc.minimum), master=master
+                )
+                rows = self.rows
+                row_height = (height - exc.minimum) // rows
+                box_y += exc.minimum
+            else:
+                box_y += row_height
 
         if self.box_align.vertical is VAlign.JUSTIFIED:
             # fill out the adjustments
@@ -336,38 +453,19 @@ class ColumnSection:
         else:
             justify_adjustments = [0] * len(self.boxes)
 
-        if self.title:
-            title_height = max(self.title_min_y, row_height)
-            if master == self.title_in_master:
-                title_box = scribus.createText(x, y, width - 10, title_height)
-                objects.append(title_box)
-                scribus.setText(self.title, title_box)
-                if self.title_style is not None:
-                    self.title_style.apply(title_box)
-
-                scribus.setTextVerticalAlignment(
-                    scribus.ALIGNV_BOTTOM, title_box
-                )
-            if master or master is None:
-                # pre-fill if necessary
-                if self.title_line_style is not None:
-                    title_line = scribus.createLine(
-                        x, y + title_height, x + width - 10, y + title_height
-                    )
-                    objects.append(title_line)
-                    self.title_line_style.apply(title_line)
-
-            y += title_height
+        self.draw_badge(x, y, width, height, master)
 
         for box, height_adjustment in zip(self.boxes, justify_adjustments):
             box_height = (
                 row_height * box.rows * box.sub_rows + height_adjustment
             )
-            box_object = box.draw(x, y, width - 10, box_height, master=master)
+            box_object = box.draw(
+                x, box_y, width - 10, box_height, master=master
+            )
             if box_object is not None:
                 objects.append(box_object)
 
-            y += box_height
+            box_y += box_height
 
         if len(objects) > 1:
             try:
@@ -381,21 +479,41 @@ class ColumnSection:
 
 
 @dataclass
-class Column:
+class Column(HasBadge, HasTitle):
     sections: list[ColumnSection] = field(default_factory=list)
-    divider_line: LineStyle = None
+    divider_line: LineStyle | None = None
 
     @property
     def rows(self):
         return sum(section.rows for section in self.sections)
 
-    def draw(self, x: int, y: int, width: int, height: int, master=None):
+    def draw(
+        self, x: int, y: int, width: int, height: int, master=None, **kwargs
+    ):
+        row_y = y
+        if self.title is not None and height < self.title_height:
+            raise DrawError(
+                f"{height} is less than title min draw size:{self.title_min_y}"
+            )
+        super().draw(
+            x=x, y=y, width=width, height=height, master=master, **kwargs
+        )
         rows = self.rows
-        row_height = height // rows
+        if self.title:
+            row_y += cast(int, self.title_height)
+            # since self.title is defined, self.title_height must not be None
+            row_height = (height - cast(int, self.title_height)) // rows
+            self.draw_title(x, y, width, height, master)
+            print(f"drew title {self.title} at {x}x{y}, set row_y to {row_y}")
+        else:
+            print(f"Not drwing title for column {self}")
+            row_height = height // rows
 
         for section in self.sections:
-            section.draw(x, y, width, row_height * section.rows, master=master)
-            y += row_height * section.rows
+            section.draw(
+                x, row_y, width, row_height * section.rows, master=master
+            )
+            row_y += row_height * section.rows
             if master or master is None:
 
                 if (

@@ -1,15 +1,31 @@
 version: "3"
 tasks:
+  build:
+    internal: true
+    requires:
+      vars: ["TAG"]
+    vars:
+      BUILD_FLAGS: '{{ .BUILD_FLAGS | default ""}}'
+      BUILD_DIR: '{{ .BUILD_DIR | default .USER_WORKING_DIR }}'
+      FILE: '{{ .DOCKERFILE | default {{ .BUILD_DIR }} + "/Dockerfile"}}'
+    cmds:
+      - docker build -f {{ .FILE }} {{ .BUILD_FLAGS }}
+
   in-container:
     internal: true
     requires:
       vars: ["IMAGE", "SH"]
+    vars:
+      TAG: '{{ .IMAGE }}'
+      BUILD: '{{ .BUILD | default "false"}}'
+      BUILD_FLAGS: '{{ .BUILD_FLAGS | default ""}}'
+      BUILD_DIR: '{{ .BUILD_DIR | default .USER_WORKING_DIR }}'
+      FILE: '{{ .DOCKERFILE | default {{ .BUILD_DIR }} + "/Dockerfile"}}'
     cmds:
-      - >
-        docker run --rm -i
-        -v "{{.PWD}}:/workspace"
-        -w /workspace
-        --user "$(id -u):$(id -g)"
-        --entrypoint ""
-        {{ .IMAGE }}
-        sh -c "{{ .SH }}"
+      - task: build
+        if: '{{if eq .BUILD "false"}}true{{else}}false{{end}}'
+        vars:
+          BUILD: '{{ .BUILD }}'
+          BUILD_FLAGS: '{{ .BUILD_FLAGS }}'
+          BUILD_DIR: '{{ .BUILD_DIR }}'
+          FILE: '{{ .FILE }}'

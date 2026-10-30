@@ -1,0 +1,15 @@
+version: "3"
+tasks:
+  in-container:
+    internal: true
+    requires:
+      vars: ["IMAGE", "SH"]
+    cmds:
+      - >
+        docker run --rm -i
+        -v "{{.PWD}}:/workspace"
+        -w /workspace
+        --user "$(id -u):$(id -g)"
+        --entrypoint ""
+        {{ .IMAGE }}
+        sh -c "{{ .SH }}"

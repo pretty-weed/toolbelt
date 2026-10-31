@@ -1,15 +1,35 @@
 version: "3"
 tasks:
+
+  test-build:
+    cmds:
+      - task: build
+        vars:
+          BUILD: "true"
+          DOCKERFILE: docker/testme/Dockerfile
+          TAG: dd:testIgnore
+  test:
+    cmds:
+      - task: in-container
+        vars:
+          IMAGE: "ubuntu:latest"
+          SH: "/bin/bash"
+
+
   build:
     internal: true
     requires:
       vars: ["TAG"]
+    dir: '{{.USER_WORKING_DIR}}'
     vars:
-      BUILD_FLAGS: '{{ .BUILD_FLAGS | default ""}}'
+      BUILD_FLAGS: '{{ .BUILD_FLAGS | default "" }}'
       BUILD_DIR: '{{ .BUILD_DIR | default .USER_WORKING_DIR }}'
-      FILE: '{{ .DOCKERFILE | default {{ .BUILD_DIR }} + "/Dockerfile"}}'
+      DEFAULT_FILE: '{{.BUILD_DIR}}/Dockerfile'
+      FILE: '{{ .DOCKERFILE | default .DEFAULT_FILE }}'
+    if: '{{ if eq .BUILD "true"}}true{{else}}false{{end}}'
     cmds:
-      - docker build -f {{ .FILE }} {{ .BUILD_FLAGS }}
+      - pwd
+      - cmd: docker build -f {{ .FILE }} {{ .BUILD_FLAGS }} {{ .BUILD_DIR }}
 
   in-container:
     internal: true
@@ -20,12 +40,22 @@ tasks:
       BUILD: '{{ .BUILD | default "false"}}'
       BUILD_FLAGS: '{{ .BUILD_FLAGS | default ""}}'
       BUILD_DIR: '{{ .BUILD_DIR | default .USER_WORKING_DIR }}'
-      FILE: '{{ .DOCKERFILE | default {{ .BUILD_DIR }} + "/Dockerfile"}}'
+      DEFAULT_FILE: '{{.BUILD_DIR}}/Dockerfile'
+      FILE: '{{ .DOCKERFILE | default .DEFAULT_FILE }}'
     cmds:
+      - 'echo "{{ .BUILD }}" "{{ .BUILD_FLAGS }}" "{{ .BUILD_DIR }}"'
       - task: build
-        if: '{{if eq .BUILD "false"}}true{{else}}false{{end}}'
         vars:
           BUILD: '{{ .BUILD }}'
           BUILD_FLAGS: '{{ .BUILD_FLAGS }}'
           BUILD_DIR: '{{ .BUILD_DIR }}'
           FILE: '{{ .FILE }}'
+          TAG: '{{ .IMAGE }}'
+      - >
+          docker run --rm -i
+          -v "{{.PWD}}:/workspace"
+          -w /workspace
+          --user "$(id -u):$(id -g)"
+          --entrypoint ""
+          {{.IMAGE}}
+          sh -c "{{.SH}}"

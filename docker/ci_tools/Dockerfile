@@ -2,7 +2,7 @@ FROM ubuntu:latest
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Set up NVM directory and target Node version
-ENV NVM_DIR=/root/.nvm
+ENV NVM_DIR=/var/nvm
 ENV NODE_VERSION=26.13.0
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -21,6 +21,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     libatomic1 \
     && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir "${NVM_DIR}"
+RUN chmod -R 777 "${NVM_DIR}"
+
+USER ubuntu
 SHELL ["/bin/bash", "-c"]
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.8/install.sh | bash
 RUN . "$NVM_DIR/nvm.sh" && nvm install $NODE_VERSION \

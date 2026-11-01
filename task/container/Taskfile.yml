@@ -1,13 +1,36 @@
 version: "3"
+
+vars:
+  TEMP_DIR: '{{ .USER_WORKING_DIR }}/.task'
+
+includes:
+  ciContainers: https://raw.githubusercontent.com/pretty-weed/toolbelt/main/task/container/Taskfile-ci-containers.yml
+
+
 tasks:
+  temp-dir:
+    status:
+      - test -d '{{ .TEMP_DIR }}'
+    cmds:
+      - mkdir '{{ .TEMP_DIR }}'
 
   test-build:
     cmds:
       - task: build
         vars:
           BUILD: "true"
-          DOCKERFILE: docker/testme/Dockerfile
+          DOCKERFILE: docker/ci_tools/Dockerfile
           TAG: dd:testIgnore
+
+  test-build-rem:
+    cmds:
+      - task: build
+        vars:
+          TAG: "dd:remoteTestIgnore"
+          BUILD: "true"
+          DOCKERFILE: '{{ .GHA_DOCKERFILE}}'
+          REMOTE_FILE: "true"
+
   test:
     cmds:
       - task: in-container
@@ -15,21 +38,39 @@ tasks:
           IMAGE: "ubuntu:latest"
           SH: "/bin/bash"
 
+  get-dockerfile:
+    deps:
+      - "temp-dir"
+    internal: true
+    requires:
+      vars: ["SOURCE"]
+    cmds:
+      - curl -s {{ .SOURCE }} > "{{ .TEMP_DIR }}/$(basename '{{ .SOURCE }}')"
 
   build:
     internal: true
     requires:
       vars: ["TAG"]
-    dir: '{{.USER_WORKING_DIR}}'
+    dir: '{{.BUILD_DIR}}'
     vars:
       BUILD_FLAGS: '{{ .BUILD_FLAGS | default "" }}'
       BUILD_DIR: '{{ .BUILD_DIR | default .USER_WORKING_DIR }}'
       DEFAULT_FILE: '{{.BUILD_DIR}}/Dockerfile'
       FILE: '{{ .DOCKERFILE | default .DEFAULT_FILE }}'
+      # use underscore in DOCKER_FILE to not clash with above var
+      REMOTE_FILE: '{{ if eq .REMOTE_FILE "true" }}true{{else}}false{{end}}'
+      DOCKER_FILE:
+        sh: 'echo "{{ if eq .REMOTE_FILE "true" }}.task/$(basename {{ .FILE }}){{else}}{{.FILE}}{{end}}"'
     if: '{{ if eq .BUILD "true"}}true{{else}}false{{end}}'
     cmds:
       - pwd
-      - cmd: docker build -f {{ .FILE }} {{ .BUILD_FLAGS }} {{ .BUILD_DIR }}
+      - echo "remote file--'{{.REMOTE_FILE}}'"
+      - bash -c "[[ '{{.REMOTE_FILE}}' == 'true' ]] && echo yes || echo no"
+      - if: "[[ '{{.REMOTE_FILE}}' == 'true' ]]"
+        task: get-dockerfile
+        vars:
+          SOURCE: '{{ .FILE }}'
+      - cmd: docker build -f {{ .DOCKER_FILE }} {{ .BUILD_FLAGS }} {{ .BUILD_DIR }}
 
   in-container:
     internal: true
@@ -42,15 +83,18 @@ tasks:
       BUILD_DIR: '{{ .BUILD_DIR | default .USER_WORKING_DIR }}'
       DEFAULT_FILE: '{{.BUILD_DIR}}/Dockerfile'
       FILE: '{{ .DOCKERFILE | default .DEFAULT_FILE }}'
+      REMOTE_FILE: '{{ if eq .REMOTE_FILE "true" }}true{{else}}false{{end}}'
     cmds:
       - 'echo "{{ .BUILD }}" "{{ .BUILD_FLAGS }}" "{{ .BUILD_DIR }}"'
       - task: build
+        if: '{{ if eq .BUILD "true"}}true{{else}}false{{end}}'
         vars:
           BUILD: '{{ .BUILD }}'
           BUILD_FLAGS: '{{ .BUILD_FLAGS }}'
           BUILD_DIR: '{{ .BUILD_DIR }}'
           FILE: '{{ .FILE }}'
           TAG: '{{ .IMAGE }}'
+          REMOTE_FILE: '{{ .REMOTE_FILE }}'
       - >
           docker run --rm -i
           -v "{{.PWD}}:/workspace"

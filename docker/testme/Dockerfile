@@ -20,10 +20,17 @@ ENV BUILD_SCRIPTS_DIR="${WORKING_COPY_DIR}/${BUILD_SCRIPTS_SUBDIR}"
 FROM base AS setup
 
 ARG DEV_WORKDIR
-
+RUN mkdir -p ${DEV_WORKDIR}
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
   --mount=type=cache,target=/var/lib/apt,sharing=locked \
-  apt update && apt install -y rsync iputils-ping curl git
+  apt update && apt install -y \
+  rsync \
+  python3 \
+  python3-pip \
+  python3-toml \
+  iputils-ping \
+  curl \
+  git
 
 RUN curl -fsSL https://pyenv.run | bash
 # ToDo just create a bashrc file and merge with the dest
@@ -33,10 +40,10 @@ RUN echo 'eval "$(pyenv init - bash)"' >> ~/.bashrc
 
 RUN env >> env.txt
 
-RUN --mount=type=cache,target=/root/.cache/pip \
-    python3 -m pip install toml
-
-RUN python3 -c 'import json, pathlib, toml;workdir=pathlib.Path("${DEV_WORKDIR}");pyproject=toml.loads(workdir.joinpath("/pyproject.toml")));print(json.dumps(pyproject.get("tool", {}).get("test_container", {}).get("pythons"))) or [])' > pythons.json
+#RUN --mount=type=cache,target=/root/.cache/pip \
+#    python3 -m pip install toml
+COPY pyproject.toml /tmp/pyproject.toml
+RUN python3 -c "import json, pathlib, toml;pyproject=toml.loads(pathlib.Path('/tmp/pyproject.toml').read_text());print(json.dumps(pyproject.get('tool', {}).get('test_container', {}).get('pythons')) or [])" > pythons.json
 
 # =============================================================================
 #  Pre-load repo state

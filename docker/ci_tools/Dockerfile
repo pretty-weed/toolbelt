@@ -14,4 +14,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     jq \
     git \
     && rm -rf /var/lib/apt/lists/*
+SHELL ["/bin/bash", "-c"]
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.8/install.sh | bash
+RUN source ~/.nvm/nvm.sh && nvm --version

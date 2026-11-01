@@ -28,8 +28,8 @@ tasks:
         vars:
           TAG: "dd:remoteTestIgnore"
           BUILD: "true"
-          DOCKERFILE: '{{ .GHA_DOCKERFILE}}'
-          REMOTE_FILE: "true"
+          DOCKERFILE: '{{ .TEMP_DIR }}/Dockerfile'
+          REMOTE_FILE: '{{ .GHA_DOCKERFILE}}'
 
   test:
     cmds:
@@ -38,14 +38,24 @@ tasks:
           IMAGE: "ubuntu:latest"
           SH: "/bin/bash"
 
+  test-br:
+    cmds:
+      - task: in-container
+        vars:
+          IMAGE: "dd:remoteTestIgnore"
+          BUILD: "true"
+          DOCKERFILE: '{{ .TEMP_DIR }}/Dockerfile'
+          REMOTE_FILE: '{{ .GHA_DOCKERFILE}}'
+          SH: "/bin/bash"
+
   get-dockerfile:
     deps:
       - "temp-dir"
     internal: true
     requires:
-      vars: ["SOURCE"]
+      vars: ["GET_SOURCE", "DEST"]
     cmds:
-      - curl -s {{ .SOURCE }} > "{{ .TEMP_DIR }}/$(basename '{{ .SOURCE }}')"
+      - curl -s "{{ .GET_SOURCE }}" > "{{ .DEST }}"
 
   build:
     internal: true
@@ -58,19 +68,18 @@ tasks:
       DEFAULT_FILE: '{{.BUILD_DIR}}/Dockerfile'
       FILE: '{{ .DOCKERFILE | default .DEFAULT_FILE }}'
       # use underscore in DOCKER_FILE to not clash with above var
-      REMOTE_FILE: '{{ if eq .REMOTE_FILE "true" }}true{{else}}false{{end}}'
-      DOCKER_FILE:
-        sh: 'echo "{{ if eq .REMOTE_FILE "true" }}.task/$(basename {{ .FILE }}){{else}}{{.FILE}}{{end}}"'
-    if: '{{ if eq .BUILD "true"}}true{{else}}false{{end}}'
+      REMOTE_FILE: '{{ .REMOTE_FILE | default "" }}'
+    if: '{{ if eq .BUILD "false"}}false{{else}}true{{end}}'
     cmds:
       - pwd
       - echo "remote file--'{{.REMOTE_FILE}}'"
       - bash -c "[[ '{{.REMOTE_FILE}}' == 'true' ]] && echo yes || echo no"
-      - if: "[[ '{{.REMOTE_FILE}}' == 'true' ]]"
+      - if: '[ "{{ .REMOTE_FILE }}" != "" ]'
         task: get-dockerfile
         vars:
-          SOURCE: '{{ .FILE }}'
-      - cmd: docker build -f {{ .DOCKER_FILE }} {{ .BUILD_FLAGS }} {{ .BUILD_DIR }}
+          GET_SOURCE: '{{ .REMOTE_FILE }}'
+          DEST: '{{ .FILE }}'
+      - cmd: docker build -f {{ .FILE }} {{ .BUILD_FLAGS }} -t {{ .TAG }} {{ .BUILD_DIR }}
 
   in-container:
     internal: true
@@ -82,8 +91,8 @@ tasks:
       BUILD_FLAGS: '{{ .BUILD_FLAGS | default ""}}'
       BUILD_DIR: '{{ .BUILD_DIR | default .USER_WORKING_DIR }}'
       DEFAULT_FILE: '{{.BUILD_DIR}}/Dockerfile'
-      FILE: '{{ .DOCKERFILE | default .DEFAULT_FILE }}'
-      REMOTE_FILE: '{{ if eq .REMOTE_FILE "true" }}true{{else}}false{{end}}'
+      DOCKERFILE: '{{ .DOCKERFILE | default .DEFAULT_FILE }}'
+      REMOTE_FILE: '{{ .REMOTE_FILE | default "" }}'
     cmds:
       - 'echo "{{ .BUILD }}" "{{ .BUILD_FLAGS }}" "{{ .BUILD_DIR }}"'
       - task: build
@@ -92,7 +101,7 @@ tasks:
           BUILD: '{{ .BUILD }}'
           BUILD_FLAGS: '{{ .BUILD_FLAGS }}'
           BUILD_DIR: '{{ .BUILD_DIR }}'
-          FILE: '{{ .FILE }}'
+          DOCKERFILE: '{{ .DOCKERFILE }}'
           TAG: '{{ .IMAGE }}'
           REMOTE_FILE: '{{ .REMOTE_FILE }}'
       - >

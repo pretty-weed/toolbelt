@@ -29,7 +29,7 @@ tasks:
           TAG: "dd:remoteTestIgnore"
           BUILD: "true"
           DOCKERFILE: '{{ .TEMP_DIR }}/Dockerfile'
-          REMOTE_FILE: '{{ .GHA_DOCKERFILE}}'
+          REMOTE_FILE: '{{ .GHA_DOCKERFILE }}'
 
   test:
     cmds:
@@ -47,6 +47,36 @@ tasks:
           DOCKERFILE: '{{ .TEMP_DIR }}/Dockerfile'
           REMOTE_FILE: '{{ .GHA_DOCKERFILE}}'
           SH: "/bin/bash"
+
+  test-local-file-based-remote:
+    vars:
+      TAG: "dd:localBasedOnRemoteTestIgnore"
+      BUILD: "true"
+      BASE_DOCKERFILE: '{{ .TEMP_DIR }}/Dockerfile'
+      REMOTE_FILE: '{{ .GHA_DOCKERFILE }}'
+    deps:
+      - task: get-dockerfile
+        vars:
+          GET_SOURCE: '{{ .REMOTE_FILE }}'
+          DEST: '{{ .BASE_DOCKERFILE }}'
+    cmds:
+      - task: test-bake
+        vars:
+          BASE_DOCKERFILE: '{{ .BASE_DOCKERFILE }}'
+      - task: in-container
+        vars:
+          IMAGE: taskfile-test:latest
+          BUILD: "false"
+          SH: "/bin/bash"
+  test-bake:
+    dir: ../../task_test_resources
+    requires:
+      vars: ["BASE_DOCKERFILE"]
+    env:
+      BASEFILE: '{{ .BASE_DOCKERFILE }}'
+    cmds:
+      - docker buildx version
+      - docker buildx bake --allow=fs.read='{{ .BASE_DOCKERFILE }}' "default"
 
   get-dockerfile:
     deps:

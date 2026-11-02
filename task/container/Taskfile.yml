@@ -138,7 +138,6 @@ tasks:
           docker run --rm -i
           -v "{{.PWD}}:/workspace"
           -w /workspace
-          --user "$(id -u):$(id -g)"
           --entrypoint ""
           {{.IMAGE}}
           sh -c "{{.SH}}"

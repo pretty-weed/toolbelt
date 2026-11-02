@@ -123,6 +123,7 @@ tasks:
       DEFAULT_FILE: '{{.BUILD_DIR}}/Dockerfile'
       DOCKERFILE: '{{ .DOCKERFILE | default .DEFAULT_FILE }}'
       REMOTE_FILE: '{{ .REMOTE_FILE | default "" }}'
+      MOUNT_WORKSPACE: '{{ if .MOUNT_WORKSPACE }}-v "{{.PWD}}:/{{.MOUNT_WORKSPACE}}{{ end }}'
     cmds:
       - 'echo "{{ .BUILD }}" "{{ .BUILD_FLAGS }}" "{{ .BUILD_DIR }}"'
       - task: build
@@ -137,7 +138,7 @@ tasks:
       - >
           docker run --rm -i
           -v "{{.PWD}}:/workspace"
-          -w /workspace
+          {{ .MOUNT_WORKSPACE }}
           --entrypoint ""
           {{.IMAGE}}
           sh -c "{{.SH}}"
